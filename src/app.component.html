@@ -1,0 +1,809 @@
+
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300">
+  
+  <!-- Modern Navbar -->
+  <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 transition-colors duration-300">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-indigo-200 dark:shadow-none shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+          </svg>
+        </div>
+        <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 hidden sm:inline">
+          FinControl Pro
+        </span>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <!-- Dark Mode Toggle -->
+        <button 
+          (click)="toggleDarkMode()"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Alternar Tema">
+          <!-- Sun Icon (Show in Dark) -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hidden dark:block">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+          </svg>
+          <!-- Moon Icon (Show in Light) -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 block dark:hidden">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+          </svg>
+        </button>
+
+        <!-- Settings Button -->
+        <button 
+          (click)="openModal('settings')"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Configurações">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+
+        <button 
+          (click)="openModal('transaction')" 
+          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="hidden sm:inline">Nova Transação</span>
+          <span class="sm:hidden">Novo</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- CONTEXT SELECTOR & MONTH NAV -->
+    <div class="space-y-4 mb-6">
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <!-- Context Selector (General vs Owner) -->
+        <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
+          <button 
+            (click)="selectOwnerFilter(null)"
+            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border"
+            [class]="selectedOwnerId() === null ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+            Visão Geral
+          </button>
+          @for (owner of financeService.owners(); track owner.id) {
+            <button 
+              (click)="selectOwnerFilter(owner.id)"
+              class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border flex items-center gap-2"
+              [class]="selectedOwnerId() === owner.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+              <span>{{ owner.name }}</span>
+            </button>
+          }
+        </div>
+
+        <!-- Month Navigation -->
+        <div class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto">
+          <button (click)="changeMonth(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <span class="px-4 font-semibold text-slate-700 dark:text-slate-200 min-w-[140px] text-center select-none whitespace-nowrap">{{ monthName() }} {{ selectedYear() }}</span>
+          <button (click)="changeMonth(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card Sub-navigation -->
+      @if (selectedOwnerId()) {
+        <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar animate-in fade-in slide-in-from-top-2">
+            <span class="text-sm font-medium text-slate-400 dark:text-slate-500 self-center pr-2">Cartões:</span>
+            <button 
+              (click)="selectCardFilter(null)"
+              class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border"
+              [class]="selectedCardId() === null ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900 border-slate-700 dark:border-slate-300 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+              Visão do Dono
+            </button>
+            @for (card of cardsForSelectedOwner(); track card.id) {
+              <button 
+                (click)="selectCardFilter(card.id)"
+                class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border flex items-center gap-2"
+                [class]="selectedCardId() === card.id ? 'text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'"
+                [style.backgroundColor]="selectedCardId() === card.id ? card.color : ''"
+                [style.borderColor]="selectedCardId() === card.id ? card.color : ''">
+                <span>{{ card.name }}</span>
+              </button>
+            }
+        </div>
+      }
+    </div>
+
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    @if (invoiceInfo(); as invoice) {
+      <!-- INVOICE VIEW (Specific Card) -->
+      <div class="mb-8 animate-in fade-in slide-in-from-bottom-2">
+        <div class="rounded-2xl p-6 text-white relative overflow-hidden shadow-lg"
+              [style.backgroundColor]="invoice.color">
+          
+          <!-- Background Decoration -->
+          <div class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+          <div class="relative z-10 flex flex-col md:flex-row justify-between md:items-end gap-6">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <h2 class="text-2xl font-bold tracking-wide">{{ invoice.cardName }}</h2>
+                <span class="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold uppercase tracking-wider">{{ invoice.ownerName }}</span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-white/80 text-sm">Fatura de <strong class="text-white">{{ monthName() }}</strong></p>
+                <p class="text-xs text-white/60">
+                  Compras realizadas entre 
+                  <span class="text-white font-mono">{{ formatDateShort(invoice.periodStart) }}</span> e 
+                  <span class="text-white font-mono">{{ formatDateShort(invoice.periodEnd) }}</span>
+                </p>
+              </div>
+            </div>
+
+            <div class="flex gap-8">
+              <div>
+                <p class="text-[10px] uppercase tracking-wider opacity-75">Vencimento</p>
+                <p class="text-xl font-mono font-semibold">{{ invoice.dueDate }}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] uppercase tracking-wider opacity-75">Valor da Fatura</p>
+                <p class="text-4xl font-bold font-mono">{{ formatCurrency(totalExpense()) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <!-- GENERAL OR OWNER VIEW -->
+      
+      <!-- KPI Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-2">
+        <!-- Income Card -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div class="relative z-10">
+            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+              {{ selectedOwnerId() ? 'Receitas de ' + getOwnerName(selectedOwnerId()!) : 'Receitas' }}
+            </p>
+            <h3 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(totalIncome()) }}</h3>
+            <div class="mt-2 flex items-center text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+              <span class="bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">Entradas do mês</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expense Card -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-rose-50 dark:bg-rose-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div class="relative z-10">
+            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+              {{ selectedOwnerId() ? 'Despesas de ' + getOwnerName(selectedOwnerId()!) : 'Despesas' }}
+            </p>
+            <h3 class="text-3xl font-bold text-rose-600 dark:text-rose-400">{{ formatCurrency(totalExpense()) }}</h3>
+            <div class="mt-2 flex items-center text-xs text-rose-700 dark:text-rose-300 font-medium">
+              <span class="bg-rose-100 dark:bg-rose-900/40 px-2 py-0.5 rounded-md">Saídas previstas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balance Card -->
+        <div class="p-6 rounded-2xl shadow-md border border-white/10 relative overflow-hidden text-white" 
+            [class]="balance() >= 0 ? 'bg-gradient-to-br from-indigo-500 to-blue-600' : 'bg-gradient-to-br from-slate-700 to-slate-900'">
+          <div class="relative z-10">
+            <p class="text-sm font-medium text-indigo-100 mb-1">
+              {{ selectedOwnerId() ? 'Balanço de ' + getOwnerName(selectedOwnerId()!) : 'Balanço Mensal' }}
+            </p>
+            <h3 class="text-3xl font-bold">{{ formatCurrency(balance()) }}</h3>
+            <p class="text-xs text-indigo-200 mt-2 opacity-80">Saldo considerando lançamentos futuros do mês.</p>
+          </div>
+        </div>
+      </div>
+
+    }
+
+    <!-- Content Grid (Charts + List) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left Column: Charts -->
+      <div class="lg:col-span-1 space-y-6">
+        
+        <!-- Balance Chart (Only for General/Owner View) -->
+        @if (!selectedCardId()) {
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Fluxo (Entrada vs Saída)</h3>
+            <div class="h-48">
+              <app-chart [data]="balanceChartData()" type="bar"></app-chart>
+            </div>
+          </div>
+        }
+
+        <!-- Categories Chart -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
+            {{ selectedCardId() ? 'Gastos da Fatura por Categoria' : 'Despesas por Categoria' }}
+          </h3>
+          <div class="h-56">
+            <app-chart [data]="categoryChartData()" type="donut"></app-chart>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Transactions List -->
+      <div class="lg:col-span-2">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full">
+          <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+             <h3 class="font-semibold text-slate-800 dark:text-slate-200">
+               {{ selectedCardId() ? 'Itens da Fatura' : 'Extrato Detalhado' }}
+             </h3>
+             <span class="text-xs bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded">
+               {{ filteredTransactions().length }} lançamentos
+             </span>
+          </div>
+          
+          <div class="flex-1 overflow-auto max-h-[600px] p-2">
+            @if (filteredTransactions().length === 0) {
+              <div class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p>Nenhum lançamento encontrado.</p>
+              </div>
+            } @else {
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-750 text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th class="px-4 py-3 font-medium rounded-l-lg">Descrição</th>
+                    <th class="px-4 py-3 font-medium hidden sm:table-cell">Categoria</th>
+                    <th class="px-4 py-3 font-medium text-right rounded-r-lg">Valor</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                  @for (t of filteredTransactions(); track t.id) {
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors group">
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-2 h-8 rounded-full shrink-0" [style.backgroundColor]="t.type === 'income' ? '#10b981' : getCategoryColor(t.categoryId)"></div>
+                          <div>
+                            <div class="font-medium text-slate-900 dark:text-slate-200">{{ t.description }}</div>
+                            <div class="text-xs text-slate-400 dark:text-slate-500 flex flex-wrap gap-2 mt-0.5">
+                              <span>{{ formatDate(t.purchaseDate) }}</span>
+                              @if (!selectedCardId() && t.cardId) {
+                                <span class="text-indigo-500 dark:text-indigo-400 flex items-center gap-0.5">
+                                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                  {{ getCardName(t.cardId) }}
+                                </span>
+                              }
+                              @if (t.installmentTotal > 1) {
+                                <span class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 rounded-[3px]">
+                                  {{ t.installmentCurrent }}/{{ t.installmentTotal }}
+                                </span>
+                              }
+                              @if (!selectedOwnerId()) {
+                                <span class="text-slate-400 dark:text-slate-500"> • {{ getOwnerName(t.ownerId) }}</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 hidden sm:table-cell">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                              [style.backgroundColor]="getCategoryColor(t.categoryId) + '20'"
+                              [style.color]="getCategoryColor(t.categoryId)">
+                          {{ getCategoryName(t.categoryId) }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        <div class="flex flex-col items-end">
+                          <span class="font-bold whitespace-nowrap" [class]="t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'">
+                            {{ t.type === 'income' ? '+' : '-' }} {{ formatCurrency(t.amount) }}
+                          </span>
+                          
+                          <div class="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button (click)="openModal('transaction', t)" class="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <!-- UPDATED DELETE BUTTON TO USE initiateDelete() -->
+                            <button (click)="initiateDelete(t)" class="text-xs text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-medium">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- BATCH ACTION CONFIRMATION MODAL -->
+  @if (activeModal() === 'batch-confirm') {
+     <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+        <div class="p-6 text-center">
+          <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
+            Movimentação Parcelada
+          </h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Esta é uma movimentação que se repete. Como você deseja aplicar a {{ pendingAction()?.type === 'delete' ? 'exclusão' : 'alteração' }}?
+          </p>
+          
+          <div class="flex flex-col gap-2">
+            <button (click)="executeBatchAction('single')" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+              Apenas esta (Mês atual)
+            </button>
+            <button (click)="executeBatchAction('future')" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+              Esta e as futuras
+            </button>
+            <button (click)="executeBatchAction('past')" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+              Esta e as anteriores
+            </button>
+            <button (click)="executeBatchAction('all')" class="w-full py-2.5 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-sm">
+              Todas as parcelas
+            </button>
+          </div>
+          
+          <button (click)="closeModal()" class="mt-4 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  @if (activeModal() === 'delete-confirm' && transactionToDelete(); as transaction) {
+     <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+        <div class="p-6 text-center">
+          <div class="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600 dark:text-rose-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
+            Confirmar Exclusão
+          </h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Você tem certeza que deseja excluir a transação <strong class="text-slate-700 dark:text-slate-200">{{ transaction.description }}</strong> no valor de <strong class="text-slate-700 dark:text-slate-200">{{ formatCurrency(transaction.amount) }}</strong>? Esta ação não pode ser desfeita.
+          </p>
+          
+          <div class="flex justify-center gap-3">
+            <button (click)="closeModal()" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+              Cancelar
+            </button>
+            <button (click)="confirmDelete()" class="w-full py-2.5 px-4 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-medium transition-colors shadow-sm">
+              Sim, Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TRANSACTION MODAL -->
+  @if (activeModal() === 'transaction') {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
+          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">
+            @if (editingTransactionId()) {
+              Editar Movimentação
+            } @else {
+              Nova Movimentação
+            }
+          </h2>
+          <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <form [formGroup]="transactionForm" (ngSubmit)="onSubmitTransaction()" class="p-6 space-y-5">
+          
+          <!-- Type Toggle -->
+          <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
+            <button type="button" 
+              (click)="transactionForm.patchValue({type: 'expense'})"
+              class="flex-1 py-2 rounded-md text-sm font-medium transition-all"
+              [class]="transactionForm.get('type')?.value === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+              Despesa
+            </button>
+            <button type="button" 
+              (click)="transactionForm.patchValue({type: 'income'})"
+              class="flex-1 py-2 rounded-md text-sm font-medium transition-all"
+              [class]="transactionForm.get('type')?.value === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+              Receita
+            </button>
+          </div>
+
+          <!-- Description & Amount -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
+              <input type="text" formControlName="description" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white" placeholder="Ex: Mercado Semanal">
+            </div>
+            <div>
+               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor (R$)</label>
+               <input type="number" step="0.01" formControlName="amount" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white" placeholder="0.00">
+            </div>
+             <div class="relative">
+               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Data</label>
+               <div class="relative">
+                 <!-- Added onclick="this.showPicker()" to force calendar on click -->
+                 <input type="date" onclick="this.showPicker()" formControlName="date" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white cursor-pointer">
+                 <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                 </div>
+               </div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Responsável</label>
+              <select formControlName="ownerId" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+                 @for (owner of financeService.owners(); track owner.id) {
+                  <option [value]="owner.id">{{ owner.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Categoria</label>
+              <select formControlName="categoryId" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+                 @for (cat of financeService.categories(); track cat.id) {
+                  <option [value]="cat.id">{{ cat.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Expense Specifics -->
+          @if (transactionForm.get('type')?.value === 'expense') {
+            <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-1">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <div class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" [checked]="useCard()" (change)="toggleUseCard()" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </div>
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Usar Cartão de Crédito?</span>
+              </label>
+
+              @if (useCard()) {
+                <div class="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Qual Cartão?</label>
+                    <select formControlName="cardId" class="w-full px-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-600 focus:border-indigo-500 outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                      @for (card of financeService.cards(); track card.id) {
+                        <option [value]="card.id">{{ card.name }} (Fecha dia {{ card.closingDay }})</option>
+                      }
+                    </select>
+                  </div>
+                  
+                  @if (!editingTransactionId()) {
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Parcelas</label>
+                      
+                      @if (!customInstallmentMode()) {
+                        <select (change)="onInstallmentChange($event)" formControlName="installments" class="w-full px-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-600 focus:border-indigo-500 outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                           @for (i of installmentOptions; track i) {
+                             <option [value]="i">{{ i }}x</option>
+                           }
+                           <option value="0" class="font-bold text-indigo-600 dark:text-indigo-400">Outro (Digitar)...</option>
+                        </select>
+                      } @else {
+                        <div class="flex gap-2">
+                           <input type="number" min="1" formControlName="installments" class="w-full px-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-600 focus:border-indigo-500 outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-white" placeholder="Qtd">
+                           <button type="button" (click)="customInstallmentMode.set(false)" class="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors" title="Voltar para lista">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                           </button>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="flex items-end pb-2">
+                       <span class="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">Edição de parcelas bloqueada</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <div class="pt-4 flex gap-3">
+             <button type="button" (click)="closeModal()" class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">Cancelar</button>
+             <button type="submit" [disabled]="transactionForm.invalid" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors">
+               Salvar
+             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- SETTINGS MODAL -->
+  @if (activeModal() === 'settings') {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl h-[600px] flex flex-col relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800 shrink-0">
+          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Gerenciar Cadastros</h2>
+          <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-slate-200 dark:border-slate-700 shrink-0">
+           <button 
+             (click)="settingsTab.set('preferences')"
+             class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+             [class]="settingsTab() === 'preferences' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+             Geral
+           </button>
+           <button 
+             (click)="settingsTab.set('categories')"
+             class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+             [class]="settingsTab() === 'categories' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+             Categorias
+           </button>
+           <button 
+             (click)="settingsTab.set('cards')"
+             class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+             [class]="settingsTab() === 'cards' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+             Cartões
+           </button>
+           <button 
+             (click)="settingsTab.set('owners')"
+             class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+             [class]="settingsTab() === 'owners' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+             Donos
+           </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-auto p-6 bg-slate-50/30 dark:bg-slate-900/30">
+          
+          <!-- PREFERENCES TAB -->
+          @if (settingsTab() === 'preferences') {
+            <div class="space-y-6">
+              <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                 <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                   Mês Financeiro
+                 </h3>
+                 <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                   Defina o dia de início do seu mês financeiro. A Visão Geral exibirá movimentações a partir deste dia até o dia anterior do mês seguinte.
+                 </p>
+                 
+                 <form [formGroup]="preferencesForm" class="flex items-end gap-4" (change)="onSavePreferences()">
+                   <div class="space-y-1">
+                     <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dia de Início</label>
+                     <input type="number" min="1" max="31" formControlName="monthStartDay" class="w-24 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                   </div>
+                   <div class="text-sm text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-lg border border-indigo-100 dark:border-indigo-800 mb-0.5">
+                     @if (preferencesForm.value.monthStartDay === 1) {
+                       O mês começa dia 1 e termina no último dia do mês.
+                     } @else {
+                       Período: Dia {{ preferencesForm.value.monthStartDay }} até dia {{ preferencesForm.value.monthStartDay - 1 }} do próximo mês.
+                     }
+                   </div>
+                 </form>
+              </div>
+            </div>
+          }
+
+          <!-- CATEGORIES TAB -->
+          @if (settingsTab() === 'categories') {
+            <div class="space-y-6">
+              
+              <!-- Add Category Form -->
+              <form [formGroup]="categoryForm" (ngSubmit)="onAddCategory()" class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex-1 space-y-1">
+                  <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Nome da Categoria</label>
+                  <input type="text" formControlName="name" placeholder="Ex: Investimentos" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                </div>
+                <div class="space-y-1">
+                   <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor</label>
+                   <div class="flex items-center">
+                     <input type="color" formControlName="color" class="h-10 w-14 rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
+                   </div>
+                </div>
+                <button type="submit" [disabled]="categoryForm.invalid" class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+                  Adicionar
+                </button>
+              </form>
+
+              <!-- List -->
+              <div class="space-y-2">
+                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Categorias Existentes</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  @for (cat of financeService.categories(); track cat.id) {
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
+                      <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full shadow-sm" [style.backgroundColor]="cat.color"></div>
+                        <span class="font-medium text-slate-700 dark:text-slate-200">{{ cat.name }}</span>
+                      </div>
+                      <button (click)="financeService.deleteCategory(cat.id)" class="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all p-1">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- CARDS TAB -->
+          @if (settingsTab() === 'cards') {
+            <div class="space-y-6">
+              <!-- Add Card Form -->
+              <form [formGroup]="cardForm" (ngSubmit)="onSaveCard()" class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="col-span-2 sm:col-span-1 space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                       @if (editingCardId()) {
+                         Editando Cartão
+                       } @else {
+                         Nome do Cartão
+                       }
+                    </label>
+                    <input type="text" formControlName="name" placeholder="Ex: Black Card" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                  </div>
+                  <div class="col-span-2 sm:col-span-1 space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dono</label>
+                    <select formControlName="ownerId" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+                      @for (owner of financeService.owners(); track owner.id) {
+                        <option [value]="owner.id">{{ owner.name }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                  <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Fechamento</label>
+                    <input type="number" min="1" max="31" formControlName="closingDay" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                  </div>
+                   <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Vencimento</label>
+                    <input type="number" min="1" max="31" formControlName="dueDay" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor do Cartão</label>
+                    <div class="flex items-center">
+                     <input type="color" formControlName="color" class="h-[42px] w-full rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
+                   </div>
+                  </div>
+                </div>
+                <div class="flex justify-end gap-2">
+                   @if (editingCardId()) {
+                     <button type="button" (click)="cancelCardEdit()" class="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
+                       Cancelar
+                     </button>
+                   }
+                   <button type="submit" [disabled]="cardForm.invalid" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+                    @if (editingCardId()) {
+                      Salvar Alterações
+                    } @else {
+                      Adicionar Cartão
+                    }
+                  </button>
+                </div>
+              </form>
+
+              <!-- List -->
+              <div class="space-y-2">
+                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Cartões Cadastrados</h3>
+                <div class="grid grid-cols-1 gap-3">
+                  @for (card of financeService.cards(); track card.id) {
+                    <div class="relative overflow-hidden p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-white shadow-md group transition-all"
+                         [style.backgroundColor]="card.color">
+                      <div class="flex justify-between items-start relative z-10">
+                        <div>
+                          <p class="font-bold text-lg tracking-wide drop-shadow-sm">{{ card.name }}</p>
+                          <p class="text-xs opacity-90 uppercase tracking-wider font-medium">{{ getOwnerName(card.ownerId) }}</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <button (click)="editCard(card)" class="text-white/60 hover:text-white transition-colors p-1" title="Editar">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                          </button>
+                          <button (click)="financeService.deleteCard(card.id)" class="text-white/60 hover:text-white transition-colors p-1" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="mt-4 flex gap-6 relative z-10">
+                        <div>
+                          <p class="text-[10px] opacity-75 uppercase">Fechamento</p>
+                          <p class="font-mono text-sm font-semibold">Dia {{ card.closingDay }}</p>
+                        </div>
+                        <div>
+                          <p class="text-[10px] opacity-75 uppercase">Vencimento</p>
+                          <p class="font-mono text-sm font-semibold">Dia {{ card.dueDay }}</p>
+                        </div>
+                      </div>
+                      <!-- Decorative Circle -->
+                      <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/20 rounded-full blur-xl"></div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+          
+          <!-- OWNERS TAB -->
+          @if (settingsTab() === 'owners') {
+            <div class="space-y-6">
+              
+              <!-- Add Owner Form -->
+              <form [formGroup]="ownerForm" (ngSubmit)="onSaveOwner()" class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex-1 space-y-1">
+                  <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                    @if (editingOwnerId()) {
+                      Editar Dono / Responsável
+                    } @else {
+                      Nome do Dono / Responsável
+                    }
+                  </label>
+                  <input type="text" formControlName="name" placeholder="Ex: João Silva" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+                </div>
+                
+                @if (editingOwnerId()) {
+                   <button type="button" (click)="cancelOwnerEdit()" class="h-10 px-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
+                    Cancelar
+                  </button>
+                }
+                
+                <button type="submit" [disabled]="ownerForm.invalid" class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+                  @if (editingOwnerId()) {
+                    Salvar
+                  } @else {
+                    Adicionar
+                  }
+                </button>
+              </form>
+
+              <!-- List -->
+              <div class="space-y-2">
+                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Pessoas Cadastradas</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  @for (owner of financeService.owners(); track owner.id) {
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-xs">
+                          {{ owner.name.charAt(0).toUpperCase() }}
+                        </div>
+                        <span class="font-medium text-slate-700 dark:text-slate-200">{{ owner.name }}</span>
+                      </div>
+                      
+                      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button (click)="editOwner(owner)" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1" title="Editar">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button (click)="financeService.deleteOwner(owner.id)" class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1" title="Excluir">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+    </div>
+  }
+
+</div>
