@@ -68,8 +68,8 @@ export class FinanceService {
   ]);
 
   readonly cards = signal<CreditCard[]>([
-    { id: '1', name: 'Nubank Platinum', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
-    { id: '2', name: 'Visa Infinite', ownerId: '2', closingDay: 20, dueDay: 25, color: '#1e293b' }
+    { id: '1', name: 'Santander', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
+    { id: '2', name: 'Itaú', ownerId: '2', closingDay: 24, dueDay: 1, color: '#1e293b' }
   ]);
 
   readonly transactions = signal<Transaction[]>([]);
@@ -81,8 +81,8 @@ export class FinanceService {
 
     if (this.owners().length === 0) {
       this.owners.set([
-        { id: '1', name: 'João' },
-        { id: '2', name: 'Maria' }
+        { id: '1', name: 'Felipe' },
+        { id: '2', name: 'Jhully' }
       ]);
     }
     

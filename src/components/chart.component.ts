@@ -1,6 +1,6 @@
 
 import { Component, ElementRef, computed, effect, input, viewChild } from '@angular/core';
-import * as d3 from 'd3';
+import * as d3 from 'd3'
 
 export interface ChartData {
   label: string;
