@@ -11,7 +11,7 @@
           </svg>
         </div>
         <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 hidden sm:inline">
-          Vault
+          FinControl Pro
         </span>
       </div>
       
@@ -56,104 +56,44 @@
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     
     <!-- CONTEXT SELECTOR & MONTH NAV -->
-    <div class="space-y-4 mb-6">
-      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <!-- Context Selector (General vs Owner) -->
-        <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+      
+      <!-- Context Selector (General vs Card) -->
+      <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
+        <button 
+          (click)="selectCardFilter(null)"
+          class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border"
+          [class]="selectedCardId() === null ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+          Visão Geral
+        </button>
+        @for (card of financeService.cards(); track card.id) {
           <button 
-            (click)="selectOwnerFilter(null)"
-            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border"
-            [class]="selectedOwnerId() === null ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
-            Visão Geral
+            (click)="selectCardFilter(card.id)"
+            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border flex items-center gap-2"
+            [class]="selectedCardId() === card.id ? 'text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'"
+            [style.backgroundColor]="selectedCardId() === card.id ? card.color : ''"
+            [style.borderColor]="selectedCardId() === card.id ? card.color : ''">
+            <span>{{ card.name }}</span>
+            <span class="text-[10px] opacity-75 bg-black/10 px-1.5 rounded-md">{{ getOwnerName(card.ownerId) }}</span>
           </button>
-          @for (owner of financeService.owners(); track owner.id) {
-            <button 
-              (click)="selectOwnerFilter(owner.id)"
-              class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border flex items-center gap-2"
-              [class]="selectedOwnerId() === owner.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
-              <span>{{ owner.name }}</span>
-            </button>
-          }
-        </div>
-
-        <!-- Month Navigation -->
-        <div class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto">
-          <button (click)="changeMonth(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-          </button>
-          <span class="px-4 font-semibold text-slate-700 dark:text-slate-200 min-w-[140px] text-center select-none whitespace-nowrap">{{ monthName() }} {{ selectedYear() }}</span>
-          <button (click)="changeMonth(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </button>
-        </div>
+        }
       </div>
 
-      <!-- Card Sub-navigation -->
-      @if (selectedOwnerId()) {
-        <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar animate-in fade-in slide-in-from-top-2">
-            <span class="text-sm font-medium text-slate-400 dark:text-slate-500 self-center pr-2">Cartões:</span>
-            <button 
-              (click)="selectCardFilter(null)"
-              class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border"
-              [class]="selectedCardId() === null ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900 border-slate-700 dark:border-slate-300 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
-              Visão do Dono
-            </button>
-            @for (card of cardsForSelectedOwner(); track card.id) {
-              <button 
-                (click)="selectCardFilter(card.id)"
-                class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border flex items-center gap-2"
-                [class]="selectedCardId() === card.id ? 'text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'"
-                [style.backgroundColor]="selectedCardId() === card.id ? card.color : ''"
-                [style.borderColor]="selectedCardId() === card.id ? card.color : ''">
-                <span>{{ card.name }}</span>
-              </button>
-            }
-        </div>
-      }
+      <!-- Month Navigation -->
+      <div class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto">
+        <button (click)="changeMonth(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span class="px-4 font-semibold text-slate-700 dark:text-slate-200 min-w-[140px] text-center select-none whitespace-nowrap">{{ monthName() }} {{ selectedYear() }}</span>
+        <button (click)="changeMonth(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
     </div>
 
-
     <!-- MAIN DASHBOARD CONTENT -->
-    @if (invoiceInfo(); as invoice) {
-      <!-- INVOICE VIEW (Specific Card) -->
-      <div class="mb-8 animate-in fade-in slide-in-from-bottom-2">
-        <div class="rounded-2xl p-6 text-white relative overflow-hidden shadow-lg"
-              [style.backgroundColor]="invoice.color">
-          
-          <!-- Background Decoration -->
-          <div class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-          <div class="relative z-10 flex flex-col md:flex-row justify-between md:items-end gap-6">
-            <div>
-              <div class="flex items-center gap-3 mb-2">
-                <h2 class="text-2xl font-bold tracking-wide">{{ invoice.cardName }}</h2>
-                <span class="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold uppercase tracking-wider">{{ invoice.ownerName }}</span>
-              </div>
-              <div class="space-y-1">
-                <p class="text-white/80 text-sm">Fatura de <strong class="text-white">{{ monthName() }}</strong></p>
-                <p class="text-xs text-white/60">
-                  Compras realizadas entre 
-                  <span class="text-white font-mono">{{ formatDateShort(invoice.periodStart) }}</span> e 
-                  <span class="text-white font-mono">{{ formatDateShort(invoice.periodEnd) }}</span>
-                </p>
-              </div>
-            </div>
-
-            <div class="flex gap-8">
-              <div>
-                <p class="text-[10px] uppercase tracking-wider opacity-75">Vencimento</p>
-                <p class="text-xl font-mono font-semibold">{{ invoice.dueDate }}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-[10px] uppercase tracking-wider opacity-75">Valor da Fatura</p>
-                <p class="text-4xl font-bold font-mono">{{ formatCurrency(totalExpense()) }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    } @else {
-      <!-- GENERAL OR OWNER VIEW -->
+    @if (!selectedCardId()) {
+      <!-- GENERAL VIEW (Default) -->
       
       <!-- KPI Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-2">
@@ -161,9 +101,7 @@
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
           <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
           <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-              {{ selectedOwnerId() ? 'Receitas de ' + getOwnerName(selectedOwnerId()!) : 'Receitas' }}
-            </p>
+            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Receitas</p>
             <h3 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(totalIncome()) }}</h3>
             <div class="mt-2 flex items-center text-xs text-emerald-700 dark:text-emerald-300 font-medium">
               <span class="bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">Entradas do mês</span>
@@ -175,9 +113,7 @@
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
           <div class="absolute right-0 top-0 w-24 h-24 bg-rose-50 dark:bg-rose-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
           <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-              {{ selectedOwnerId() ? 'Despesas de ' + getOwnerName(selectedOwnerId()!) : 'Despesas' }}
-            </p>
+            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Despesas</p>
             <h3 class="text-3xl font-bold text-rose-600 dark:text-rose-400">{{ formatCurrency(totalExpense()) }}</h3>
             <div class="mt-2 flex items-center text-xs text-rose-700 dark:text-rose-300 font-medium">
               <span class="bg-rose-100 dark:bg-rose-900/40 px-2 py-0.5 rounded-md">Saídas previstas</span>
@@ -189,15 +125,53 @@
         <div class="p-6 rounded-2xl shadow-md border border-white/10 relative overflow-hidden text-white" 
             [class]="balance() >= 0 ? 'bg-gradient-to-br from-indigo-500 to-blue-600' : 'bg-gradient-to-br from-slate-700 to-slate-900'">
           <div class="relative z-10">
-            <p class="text-sm font-medium text-indigo-100 mb-1">
-              {{ selectedOwnerId() ? 'Balanço de ' + getOwnerName(selectedOwnerId()!) : 'Balanço Mensal' }}
-            </p>
+            <p class="text-sm font-medium text-indigo-100 mb-1">Balanço Mensal</p>
             <h3 class="text-3xl font-bold">{{ formatCurrency(balance()) }}</h3>
             <p class="text-xs text-indigo-200 mt-2 opacity-80">Saldo considerando lançamentos futuros do mês.</p>
           </div>
         </div>
       </div>
 
+    } @else {
+      <!-- INVOICE VIEW (Specific Card) -->
+      @if (invoiceInfo(); as invoice) {
+        <div class="mb-8 animate-in fade-in slide-in-from-bottom-2">
+          <div class="rounded-2xl p-6 text-white relative overflow-hidden shadow-lg"
+               [style.backgroundColor]="invoice.color">
+            
+            <!-- Background Decoration -->
+            <div class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+            <div class="relative z-10 flex flex-col md:flex-row justify-between md:items-end gap-6">
+              <div>
+                <div class="flex items-center gap-3 mb-2">
+                  <h2 class="text-2xl font-bold tracking-wide">{{ invoice.cardName }}</h2>
+                  <span class="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold uppercase tracking-wider">{{ invoice.ownerName }}</span>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-white/80 text-sm">Fatura de <strong class="text-white">{{ monthName() }}</strong></p>
+                  <p class="text-xs text-white/60">
+                    Compras realizadas entre 
+                    <span class="text-white font-mono">{{ formatDateShort(invoice.periodStart) }}</span> e 
+                    <span class="text-white font-mono">{{ formatDateShort(invoice.periodEnd) }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex gap-8">
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider opacity-75">Vencimento</p>
+                  <p class="text-xl font-mono font-semibold">{{ invoice.dueDate }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[10px] uppercase tracking-wider opacity-75">Valor da Fatura</p>
+                  <p class="text-4xl font-bold font-mono">{{ formatCurrency(totalExpense()) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     }
 
     <!-- Content Grid (Charts + List) -->
@@ -206,7 +180,7 @@
       <!-- Left Column: Charts -->
       <div class="lg:col-span-1 space-y-6">
         
-        <!-- Balance Chart (Only for General/Owner View) -->
+        <!-- Balance Chart (Only for General View) -->
         @if (!selectedCardId()) {
           <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
             <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Fluxo (Entrada vs Saída)</h3>
@@ -278,9 +252,7 @@
                                   {{ t.installmentCurrent }}/{{ t.installmentTotal }}
                                 </span>
                               }
-                              @if (!selectedOwnerId()) {
-                                <span class="text-slate-400 dark:text-slate-500"> • {{ getOwnerName(t.ownerId) }}</span>
-                              }
+                              <span class="text-slate-400 dark:text-slate-500"> • {{ getOwnerName(t.ownerId) }}</span>
                             </div>
                           </div>
                         </div>
@@ -353,36 +325,6 @@
           </div>
           
           <button (click)="closeModal()" class="mt-4 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- DELETE CONFIRMATION MODAL -->
-  @if (activeModal() === 'delete-confirm' && transactionToDelete(); as transaction) {
-     <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
-      
-      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
-        <div class="p-6 text-center">
-          <div class="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600 dark:text-rose-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          </div>
-          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
-            Confirmar Exclusão
-          </h3>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
-            Você tem certeza que deseja excluir a transação <strong class="text-slate-700 dark:text-slate-200">{{ transaction.description }}</strong> no valor de <strong class="text-slate-700 dark:text-slate-200">{{ formatCurrency(transaction.amount) }}</strong>? Esta ação não pode ser desfeita.
-          </p>
-          
-          <div class="flex justify-center gap-3">
-            <button (click)="closeModal()" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
-              Cancelar
-            </button>
-            <button (click)="confirmDelete()" class="w-full py-2.5 px-4 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-medium transition-colors shadow-sm">
-              Sim, Excluir
-            </button>
-          </div>
         </div>
       </div>
     </div>
