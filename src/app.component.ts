@@ -27,12 +27,12 @@ export class AppComponent {
   // --- UI State ---
   activeModal = signal<'transaction' | 'settings' | 'batch-confirm' | null>(null);
   settingsTab = signal<'preferences' | 'categories' | 'cards' | 'owners'>('preferences');
-  
+
   editingTransactionId = signal<string | null>(null);
-  editingOwnerId = signal<string | null>(null); 
+  editingOwnerId = signal<string | null>(null);
   editingCardId = signal<string | null>(null);
-  useCard = signal(false); 
-  
+  useCard = signal(false);
+
   // Batch Action State
   pendingAction = signal<PendingAction | null>(null);
 
@@ -41,11 +41,11 @@ export class AppComponent {
   customInstallmentMode = signal(false);
 
   // Dashboard Context State
-  selectedCardId = signal<string | null>(null); 
+  selectedCardId = signal<string | null>(null);
 
   // Date Navigation State
   today = new Date();
-  selectedMonth = signal(this.today.getMonth()); 
+  selectedMonth = signal(this.today.getMonth());
   selectedYear = signal(this.today.getFullYear());
 
   // --- Forms ---
@@ -100,7 +100,7 @@ export class AppComponent {
       ownerId: [this.financeService.owners()[0]?.id || '', Validators.required],
       closingDay: [1, [Validators.required, Validators.min(1), Validators.max(31)]],
       dueDay: [10, [Validators.required, Validators.min(1), Validators.max(31)]],
-      color: ['#1e293b', Validators.required] 
+      color: ['#1e293b', Validators.required]
     });
 
     this.ownerForm = this.fb.group({
@@ -113,7 +113,7 @@ export class AppComponent {
   }
 
   // --- Computed Data ---
-  
+
   monthName = computed(() => {
     const months = [
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -121,15 +121,15 @@ export class AppComponent {
     ];
     const name = months[this.selectedMonth()];
     const startDay = this.financeService.settings().monthStartDay;
-    
+
     if (startDay === 1 || this.selectedCardId()) {
       return name;
     }
 
     const rangeStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
     const rangeEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay - 1);
-    
-    return `${name} (${rangeStart.getDate()}/${rangeStart.getMonth()+1} a ${rangeEnd.getDate()}/${rangeEnd.getMonth()+1})`;
+
+    return `${name} (${rangeStart.getDate()}/${rangeStart.getMonth() + 1} a ${rangeEnd.getDate()}/${rangeEnd.getMonth() + 1})`;
   });
 
   filteredTransactions = computed(() => {
@@ -153,8 +153,8 @@ export class AppComponent {
       const periodStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
       const periodEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay);
       const [y, m, d] = t.purchaseDate.split('T')[0].split('-').map(Number);
-      const tDate = new Date(y, m - 1, d); 
-      
+      const tDate = new Date(y, m - 1, d);
+
       return tDate >= periodStart && tDate < periodEnd;
 
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
@@ -184,7 +184,7 @@ export class AppComponent {
 
     let endMonth = this.selectedMonth();
     let endYear = this.selectedYear();
-    
+
     let startMonth = endMonth - 1;
     let startYear = endYear;
     if (startMonth < 0) {
@@ -208,10 +208,10 @@ export class AppComponent {
   });
 
   balanceChartData = computed<ChartData[]>(() => {
-    if (this.selectedCardId()) return []; 
+    if (this.selectedCardId()) return [];
     return [
-      { label: 'Receitas', value: this.totalIncome(), color: '#10b981' }, 
-      { label: 'Despesas', value: this.totalExpense(), color: '#f43f5e' }  
+      { label: 'Receitas', value: this.totalIncome(), color: '#10b981' },
+      { label: 'Despesas', value: this.totalExpense(), color: '#f43f5e' }
     ];
   });
 
@@ -226,10 +226,10 @@ export class AppComponent {
     return Object.entries(groups)
       .map(([key, total]) => {
         const cat = this.financeService.getCategory(key);
-        return { 
-          label: cat?.name || key, 
-          value: total, 
-          color: cat?.color || '#cbd5e1' 
+        return {
+          label: cat?.name || key,
+          value: total,
+          color: cat?.color || '#cbd5e1'
         };
       })
       .sort((a, b) => b.value - a.value);
@@ -262,7 +262,7 @@ export class AppComponent {
 
   openModal(type: 'transaction' | 'settings' | 'batch-confirm', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
-    
+
     if (type === 'transaction') {
       if (transactionToEdit) {
         this.editingTransactionId.set(transactionToEdit.id);
@@ -273,12 +273,12 @@ export class AppComponent {
         // Find Category ID by Name if missing (Backend logic reverse lookup)
         let catId = transactionToEdit.categoryId;
         if (!catId && transactionToEdit.category) {
-           const cat = this.financeService.categories().find(c => c.name === transactionToEdit.category);
-           if (cat) catId = cat.id;
+          const cat = this.financeService.categories().find(c => c.name === transactionToEdit.category);
+          if (cat) catId = cat.id;
         }
 
         this.transactionForm.setValue({
-          description: transactionToEdit.description.replace(/\s\(\d+\/\d+\)$/, ''), 
+          description: transactionToEdit.description.replace(/\s\(\d+\/\d+\)$/, ''),
           amount: transactionToEdit.amount,
           type: transactionToEdit.type,
           date: transactionToEdit.purchaseDate.split('T')[0],
@@ -338,7 +338,7 @@ export class AppComponent {
     let m = this.selectedMonth() + delta;
     let y = this.selectedYear();
 
-    if (m > 11) { m = 0; y++; } 
+    if (m > 11) { m = 0; y++; }
     else if (m < 0) { m = 11; y--; }
 
     this.selectedMonth.set(m);
@@ -353,6 +353,7 @@ export class AppComponent {
       this.activeModal.set('batch-confirm');
     } else {
       if (confirm('Excluir esta movimentação?')) {
+        // Updated to use Subscription
         this.financeService.deleteTransaction(transaction.id).subscribe({
           next: () => this.closeModal(),
           error: (err) => alert('Erro ao excluir: ' + err.message)
@@ -370,19 +371,33 @@ export class AppComponent {
     const editId = this.editingTransactionId();
 
     if (editId) {
-      // Edit Logic (Local or Backend Patch needs implementation)
-      // For now, focus on Create per instructions
+      // --- LÓGICA DE EDIÇÃO (UPDATE) ---
       const original = this.financeService.transactions().find(t => t.id === editId);
+      
+      // Se for parcelado, mantém a lógica de batch (ainda não implementada no backend, mas segura no front)
       if (original?.groupId) {
          this.pendingAction.set({ type: 'edit', transaction: original, formValue: val });
          this.activeModal.set('batch-confirm');
          return; 
       }
-      // Single Edit logic placeholder
-      this.financeService.updateTransaction(editId, {}).subscribe(() => this.closeModal());
+
+      // Edição Simples: Mapeia o formulário para o formato do Backend
+      const updatePayload: Partial<Transaction> = {
+        description: val.description,
+        amount: val.amount,
+        type: val.type, // O Service vai converter para UpperCase
+        purchaseDate: `${val.date}T00:00:00`, // Formato ISO LocalDateTime
+        category: this.financeService.getCategory(val.categoryId)?.name || 'Outros', // Envia NOME, não ID
+        cardId: usingCard ? val.cardId : null
+      };
+
+      this.financeService.updateTransaction(editId, updatePayload).subscribe({
+        next: () => this.closeModal(),
+        error: (err) => alert('Erro ao atualizar: ' + err.message)
+      });
 
     } else {
-      // CREATE: Use .subscribe() as requested
+      // --- LÓGICA DE CRIAÇÃO (CREATE) ---
       this.financeService.addTransaction(
         val.description,
         val.amount,
@@ -394,7 +409,7 @@ export class AppComponent {
         usingCard ? val.installments : 1
       ).subscribe({
         next: () => this.closeModal(),
-        error: (err) => alert('Erro ao salvar: ' + err.message)
+        error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
       });
     }
   }
@@ -426,8 +441,8 @@ export class AppComponent {
         error: (err) => alert('Erro ao excluir em lote: ' + err.message)
       });
     } else if (action.type === 'edit') {
-       // Batch edit logic would go here
-       this.closeModal();
+      // Batch edit logic would go here
+      this.closeModal();
     }
   }
 
@@ -468,5 +483,49 @@ export class AppComponent {
   getOwnerName(id: string | undefined): string {
     if (!id) return '-';
     return this.financeService.getOwner(id)?.name || '-';
+  }
+
+  onSavePreferences() {
+    this.financeService.updateMonthStartDay(this.preferencesForm.value.monthStartDay);
+  }
+
+  onAddCategory() {
+    if (this.categoryForm.valid) {
+      this.financeService.addCategory(this.categoryForm.value.name, this.categoryForm.value.color);
+      this.categoryForm.reset({ color: '#3b82f6' });
+    }
+  }
+
+  onSaveCard() {
+    if (this.cardForm.valid) {
+      if (this.editingCardId()) {
+        this.financeService.updateCard(this.editingCardId()!, this.cardForm.value);
+      } else {
+        const val = this.cardForm.value;
+        this.financeService.addCard(val.name, val.ownerId, val.closingDay, val.dueDay, val.color);
+      }
+      this.cancelCardEdit();
+    }
+  }
+
+  editCard(card: CreditCard) {
+    this.editingCardId.set(card.id);
+    this.cardForm.patchValue(card);
+  }
+
+  onSaveOwner() {
+    if (this.ownerForm.valid) {
+      if (this.editingOwnerId()) {
+        this.financeService.updateOwner(this.editingOwnerId()!, this.ownerForm.value.name);
+      } else {
+        this.financeService.addOwner(this.ownerForm.value.name);
+      }
+      this.cancelOwnerEdit();
+    }
+  }
+
+  editOwner(owner: Owner) {
+    this.editingOwnerId.set(owner.id);
+    this.ownerForm.patchValue({ name: owner.name });
   }
 }

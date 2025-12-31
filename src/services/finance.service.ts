@@ -1,7 +1,7 @@
 
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { tap, forkJoin, map, Observable } from 'rxjs';
+import { tap, forkJoin, map, Observable, catchError, throwError } from 'rxjs';
 
 // --- DATA MODELS ---
 
@@ -37,20 +37,20 @@ export interface Transaction {
   id: string; // UUID from Backend
   description: string;
   amount: number;
-  type: TransactionType; // Frontend uses lowercase, Backend expects UPPERCASE (converted in service)
+  type: TransactionType; // Frontend uses lowercase, Backend expects UPPERCASE
   purchaseDate: string; // ISO LocalDateTime string
-  category: string; // Backend uses String Name
-  
-  // Optional fields (Backend might not have them yet, or Frontend specific logic)
-  categoryId?: string; // Kept for internal frontend logic if needed
+  category: string; // Backend stores the Name of the category
+
+  // Optional fields (Frontend logic / Not persisted in current Backend entity)
+  categoryId?: string;
   ownerId?: string;
   cardId?: string | null;
-  groupId?: string; 
+  groupId?: string;
   installmentCurrent?: number;
   installmentTotal?: number;
-  
+
   // Computed fields (Calculated on frontend after load)
-  effectiveMonth?: number; 
+  effectiveMonth?: number;
   effectiveYear?: number;
 }
 
@@ -62,16 +62,16 @@ export class FinanceService {
   private readonly API_URL = 'http://localhost:8080/transaction';
 
   // --- STATE ---
-  
-  // LocalStorage managed entities
-  readonly owners = signal<Owner[]>([]); 
+
+  // LocalStorage managed entities (Not in Java yet)
+  readonly owners = signal<Owner[]>([]);
   readonly categories = signal<Category[]>([
-    { id: '1', name: 'Alimentação', color: '#ef4444' }, 
-    { id: '2', name: 'Lazer', color: '#f59e0b' },      
-    { id: '3', name: 'Transporte', color: '#3b82f6' },  
-    { id: '4', name: 'Saúde', color: '#10b981' },      
-    { id: '5', name: 'Educação', color: '#8b5cf6' },   
-    { id: '6', name: 'Salário/Renda', color: '#22c55e' } 
+    { id: '1', name: 'Alimentação', color: '#ef4444' },
+    { id: '2', name: 'Lazer', color: '#f59e0b' },
+    { id: '3', name: 'Transporte', color: '#3b82f6' },
+    { id: '4', name: 'Saúde', color: '#10b981' },
+    { id: '5', name: 'Educação', color: '#8b5cf6' },
+    { id: '6', name: 'Salário/Renda', color: '#22c55e' }
   ]);
   readonly cards = signal<CreditCard[]>([
     { id: '1', name: 'Santander', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
@@ -93,7 +93,7 @@ export class FinanceService {
         { id: '2', name: 'Titular 2' }
       ]);
     }
-    
+
     // Auto-save effects (Only for non-backend entities)
     effect(() => localStorage.setItem('fincontrol_categories_v2', JSON.stringify(this.categories())));
     effect(() => localStorage.setItem('fincontrol_cards_v2', JSON.stringify(this.cards())));
@@ -118,24 +118,35 @@ export class FinanceService {
   // --- HTTP METHODS ---
 
   loadAll() {
-    this.http.get<Transaction[]>(this.API_URL).subscribe({
+    this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
-        // Map backend data to frontend structure (calculating effective dates)
-        const mappedData = data.map(t => {
+        // Map backend data to frontend structure
+        const mappedData: Transaction[] = data.map(t => {
           const dateObj = new Date(t.purchaseDate);
+
+          // Try to recover categoryId from Name to show correct colors
+          const matchedCategory = this.categories().find(c => c.name === t.category);
+
           return {
             ...t,
-            type: t.type.toString().toLowerCase() as TransactionType, // Ensure lowercase for UI
-            effectiveMonth: t.effectiveMonth ?? dateObj.getMonth(), // Use backend or calc
-            effectiveYear: t.effectiveYear ?? dateObj.getFullYear(),
-            // Ensure compatibility if backend sends nulls
-            installmentCurrent: t.installmentCurrent || 1,
-            installmentTotal: t.installmentTotal || 1
+            // Convert Java Enum (INCOME) to Frontend (income)
+            type: t.type.toLowerCase() as TransactionType,
+
+            // Restore IDs if possible (Best effort)
+            categoryId: matchedCategory?.id,
+
+            // Calculate effective dates for UI filtering
+            effectiveMonth: dateObj.getMonth(),
+            effectiveYear: dateObj.getFullYear(),
+
+            // Defaults for fields missing in Backend
+            installmentCurrent: 1,
+            installmentTotal: 1
           };
         });
         this._transactions.set(mappedData);
       },
-      error: (err) => console.error('Failed to load transactions', err)
+      error: (err) => console.error('Failed to load transactions from API', err)
     });
   }
 
@@ -144,58 +155,71 @@ export class FinanceService {
     amount: number,
     type: TransactionType,
     dateStr: string,
-    categoryId: string, // ID comes from UI form
+    categoryId: string,
     ownerId: string,
     cardId: string | null,
     installments: number
   ): Observable<any> {
+    // 1. Desmontando a data original
     const [yStr, mStr, dStr] = dateStr.split('-');
     const year = parseInt(yStr);
-    const month = parseInt(mStr) - 1; 
+    const month = parseInt(mStr) - 1;
     const day = parseInt(dStr);
-    
-    // Resolve Category Name from ID
+
+    // Resolve Category Name from ID (Backend expects String)
     const categoryName = this.categories().find(c => c.id === categoryId)?.name || 'Geral';
 
     let startMonth = month;
     let startYear = year;
 
-    // Credit Card Logic (Frontend Calc)
+    // 2. Credit Card Logic (Frontend Calc)
     if (type === 'expense' && cardId) {
       const card = this.cards().find(c => c.id === cardId);
       if (card && day >= card.closingDay) {
-        startMonth++; 
+        startMonth++;
       }
     }
 
     const totalInstallments = (type === 'expense' && cardId) ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
-    const groupId = totalInstallments > 1 ? crypto.randomUUID() : undefined;
-    
+
     // Create an array of Observables for each installment
     const requests: Observable<any>[] = [];
 
     for (let i = 0; i < totalInstallments; i++) {
-      const effectiveDate = new Date(startYear, startMonth + i, 1);
-      
+      // 3. A Lógica de Ouro para o dia da parcela
+      // Descobre o último dia do mês da parcela atual (usando o truque do dia 0)
+      const lastDayOfMonth = new Date(startYear, startMonth + i + 1, 0).getDate();
+
+      // Escolhe o dia original ou o limite do mês (o que for menor)
+      const finalDay = Math.min(day, lastDayOfMonth);
+
+      // Cria a data final da parcela
+      const effectiveDate = new Date(startYear, startMonth + i, finalDay);
+
+      // 4. Formata para o Backend (YYYY-MM-DDT00:00:00)
+      const y = effectiveDate.getFullYear();
+      const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
+      const d = String(effectiveDate.getDate()).padStart(2, '0');
+      const formattedDate = `${y}-${m}-${d}T00:00:00`
+
       // Construct Backend Payload
       const payload = {
         description: totalInstallments > 1 ? `${description} (${i + 1}/${totalInstallments})` : description,
         amount: amountPerInstallment,
         type: type.toUpperCase(), // Enum JAVA: INCOME, EXPENSE
-        purchaseDate: `${dateStr}T00:00:00`, // Simple ISO format
-        category: categoryName, // String Name
-        
-        // Optional Frontend Metadata (Backend ignores if not mapped, or saves if generic)
+        purchaseDate: formattedDate, // ISO LocalDateTime
+        category: categoryName,
+
+        // Note: ownerId, cardId, groupId are sent but Backend likely ignores them 
+        // unless you add columns to your Transaction Entity.
         ownerId,
-        cardId: type === 'income' ? null : cardId,
-        groupId,
-        installmentCurrent: i + 1,
-        installmentTotal: totalInstallments,
-        effectiveMonth: effectiveDate.getMonth(), // Persist logic if backend supports
-        effectiveYear: effectiveDate.getFullYear()
+        cardId: type === 'income' ? null : cardId
       };
 
+      //Teste log Installments
+      console.log(`Parcela ${i + 1}: Intenção dia ${day} -> Gerado: ${formattedDate}`);
+      
       requests.push(this.http.post(this.API_URL, payload));
     }
 
@@ -212,24 +236,40 @@ export class FinanceService {
   }
 
   deleteTransactionsBulk(ids: string[]): Observable<any> {
-    // Backend simplistic endpoint might not have bulk delete. 
-    // We execute multiple deletes.
+    // Backend doesn't have bulk delete, map to single deletes
     const requests = ids.map(id => this.http.delete(`${this.API_URL}/${id}`));
     return forkJoin(requests).pipe(
       tap(() => this.loadAll())
     );
   }
-  
-  // Note: updateTransaction logic would need similar adaptation, 
-  // currently we focus on Add/Load/Delete as requested.
+
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
-    // Not implemented fully in prompt request, but placeholder logic:
-    // Ideally PATCH to backend. 
-    return new Observable(observer => {
-       observer.next();
-       observer.complete();
-    });
+    // Prepara o objeto para o Backend (converte type para Maiúsculo se existir)
+    const payload = { ...updates };
+    if (payload.type) {
+      // @ts-ignore: Forçando uppercase para o Java, mesmo que o Front use lowercase
+      payload.type = payload.type.toUpperCase();
+    }
+
+    return this.http.patch(`${this.API_URL}/${id}`, payload).pipe(
+      tap(() => this.loadAll()), // Recarrega a lista após o sucesso
+      catchError(err => {
+        console.error('Erro ao atualizar:', err);
+        return throwError(() => new Error('Falha ao atualizar transação.'));
+      })
+    );
   }
+
+  // updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
+  //   // Placeholder: Ideally should use PUT/PATCH to backend
+  //   // Since prompt focused on Load/Add/Delete, we leave basic impl
+  //   // Note: Backend 'update' expects full object, frontend sends partial. 
+  //   // This requires a fetch-merge-update strategy or a patch endpoint.
+  //   return new Observable(observer => {
+  //      observer.next();
+  //      observer.complete();
+  //   });
+  // }
 
   // --- SETTINGS & LOCAL DATA HELPERS ---
 
@@ -263,9 +303,10 @@ export class FinanceService {
   deleteOwner(id: string) { this.owners.update(prev => prev.filter(o => o.id !== id)); }
 
   // --- READ HELPERS ---
-  
+
   getGroupTransactions(groupId: string) {
-    return this.transactions().filter(t => t.groupId === groupId).sort((a,b) => (a.installmentCurrent || 0) - (b.installmentCurrent || 0));
+    // Grouping depends on Frontend persistence which is limited with current Backend
+    return this.transactions().filter(t => t.groupId === groupId).sort((a, b) => (a.installmentCurrent || 0) - (b.installmentCurrent || 0));
   }
 
   getCategory(idOrName: string) {
