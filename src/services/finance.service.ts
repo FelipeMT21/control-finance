@@ -183,6 +183,10 @@ export class FinanceService {
     const totalInstallments = (type === 'expense' && cardId) ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
 
+    // Gera o groupId
+
+    const groupId = totalInstallments > 1 ? crypto.randomUUID() : null;
+
     // Create an array of Observables for each installment
     const requests: Observable<any>[] = [];
 
@@ -214,7 +218,8 @@ export class FinanceService {
         // Note: ownerId, cardId, groupId are sent but Backend likely ignores them 
         // unless you add columns to your Transaction Entity.
         ownerId,
-        cardId: type === 'income' ? null : cardId
+        cardId: type === 'income' ? null : cardId,
+        groupId: groupId
       };
 
       //Teste log Installments

@@ -35,12 +35,14 @@ export class AppComponent {
 
   // Batch Action State
   pendingAction = signal<PendingAction | null>(null);
+  batchEditScope = signal<BatchScope | null>(null); // Stores the scope selected during Edit flow
 
   // Installment UI State
   readonly installmentOptions = Array.from({ length: 24 }, (_, i) => i + 1);
   customInstallmentMode = signal(false);
 
   // Dashboard Context State
+  selectedOwnerId = signal<string | null>(null); // New: Filter by Owner first
   selectedCardId = signal<string | null>(null);
 
   // Date Navigation State
@@ -135,29 +137,51 @@ export class AppComponent {
   filteredTransactions = computed(() => {
     return this.financeService.transactions().filter(t => {
       const currentCardId = this.selectedCardId();
+      const currentOwnerId = this.selectedOwnerId();
 
       // Ensure effectiveMonth is present (fallback for safety)
       const eMonth = t.effectiveMonth ?? new Date(t.purchaseDate).getMonth();
       const eYear = t.effectiveYear ?? new Date(t.purchaseDate).getFullYear();
 
+      // 1. Filter by CARD (Most specific)
       if (currentCardId) {
         if (t.cardId !== currentCardId) return false;
         return eMonth === this.selectedMonth() && eYear === this.selectedYear();
       }
 
       const startDay = this.financeService.settings().monthStartDay;
+      let dateMatch = false;
+
+      // Date Logic
       if (startDay === 1) {
-        return eMonth === this.selectedMonth() && eYear === this.selectedYear();
+        dateMatch = eMonth === this.selectedMonth() && eYear === this.selectedYear();
+      } else {
+        const periodStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
+        const periodEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay);
+        const [y, m, d] = t.purchaseDate.split('T')[0].split('-').map(Number);
+        const tDate = new Date(y, m - 1, d);
+        dateMatch = tDate >= periodStart && tDate < periodEnd;
+      }
+      
+      if (!dateMatch) return false;
+
+      // 2. Filter by OWNER (Context)
+      // If we are in "Overview" (selectedOwnerId is null), show all.
+      // If we are in "Felipe" (selectedOwnerId set), show only Felipe's transactions.
+      if (currentOwnerId) {
+        if (t.ownerId !== currentOwnerId) return false;
       }
 
-      const periodStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
-      const periodEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay);
-      const [y, m, d] = t.purchaseDate.split('T')[0].split('-').map(Number);
-      const tDate = new Date(y, m - 1, d);
-
-      return tDate >= periodStart && tDate < periodEnd;
+      return true;
 
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+  });
+
+  // Helper to get cards for the sub-menu
+  ownerCards = computed(() => {
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) return [];
+    return this.financeService.cards().filter(c => c.ownerId === ownerId);
   });
 
   totalIncome = computed(() => {
@@ -241,9 +265,174 @@ export class AppComponent {
     this.financeService.toggleDarkMode();
   }
 
+  // --- Navigation Actions ---
+
+  selectOwnerFilter(ownerId: string | null) {
+    this.selectedOwnerId.set(ownerId);
+    this.selectedCardId.set(null); // Reset card when switching owner context
+  }
+
   selectCardFilter(cardId: string | null) {
     this.selectedCardId.set(cardId);
   }
+
+  // --- CRUD & Batch Logic ---
+
+  initiateDelete(transaction: Transaction) {
+    if (transaction.groupId) {
+      this.pendingAction.set({ type: 'delete', transaction });
+      this.activeModal.set('batch-confirm');
+    } else {
+      if (confirm('Excluir esta movimentação?')) {
+        this.financeService.deleteTransaction(transaction.id).subscribe({
+          next: () => this.closeModal(),
+          error: (err) => alert('Erro ao excluir: ' + err.message)
+        });
+      }
+    }
+  }
+
+  initiateEdit(transaction: Transaction) {
+    if (transaction.groupId) {
+      // Ask for scope first
+      this.pendingAction.set({ type: 'edit', transaction });
+      this.activeModal.set('batch-confirm');
+    } else {
+      // Normal edit
+      this.batchEditScope.set(null);
+      this.openModal('transaction', transaction);
+    }
+  }
+
+  executeBatchAction(scope: BatchScope) {
+    const action = this.pendingAction();
+    if (!action) return;
+
+    // IF DELETE: Execute immediately
+    if (action.type === 'delete') {
+      const groupId = action.transaction.groupId!;
+      const groupTransactions = this.financeService.getGroupTransactions(groupId);
+      const currentIdx = action.transaction.installmentCurrent || 1;
+      let targetIds: string[] = [];
+
+      if (scope === 'single') targetIds = [action.transaction.id];
+      else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
+      else if (scope === 'future') targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) >= currentIdx).map(t => t.id);
+      else if (scope === 'past') targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx).map(t => t.id);
+
+      this.financeService.deleteTransactionsBulk(targetIds).subscribe({
+        next: () => this.closeModal(),
+        error: (err) => alert('Erro ao excluir em lote: ' + err.message)
+      });
+      return;
+    }
+
+    // IF EDIT: Just set the scope and Open the Form
+    if (action.type === 'edit') {
+      this.batchEditScope.set(scope);
+      this.activeModal.set(null); // Close batch modal
+      
+      // Slight timeout to allow modal animation to clear or just switch immediately
+      // We switch to transaction modal
+      setTimeout(() => {
+        this.openModal('transaction', action.transaction);
+      }, 50);
+    }
+  }
+
+  onSubmitTransaction() {
+    if (this.transactionForm.invalid) return;
+
+    const val = this.transactionForm.value;
+    const isExpense = val.type === 'expense';
+    const usingCard = isExpense && this.useCard();
+    const editId = this.editingTransactionId();
+    const scope = this.batchEditScope();
+
+    if (editId) {
+      // --- UPDATE LOGIC ---
+      const updatePayload: Partial<Transaction> = {
+        description: val.description,
+        amount: val.amount,
+        type: val.type,
+        // Backend stores Date as string
+        purchaseDate: `${val.date}T00:00:00`, 
+        // Backend stores Category Name
+        category: this.financeService.getCategory(val.categoryId)?.name || 'Outros',
+        // Optional Frontend fields
+        categoryId: val.categoryId,
+        cardId: usingCard ? val.cardId : null,
+        ownerId: val.ownerId
+      };
+
+      if (!scope || scope === 'single') {
+        // Single Update
+        this.financeService.updateTransaction(editId, updatePayload).subscribe({
+          next: () => this.closeModal(),
+          error: (err) => alert('Erro ao atualizar: ' + err.message)
+        });
+      } else {
+        // Batch Update logic
+        const original = this.financeService.transactions().find(t => t.id === editId);
+        if (original && original.groupId) {
+          const groupTransactions = this.financeService.getGroupTransactions(original.groupId);
+          const currentIdx = original.installmentCurrent || 1;
+          let targetTransactions: Transaction[] = [];
+
+          if (scope === 'all') targetTransactions = groupTransactions;
+          else if (scope === 'future') targetTransactions = groupTransactions.filter(t => (t.installmentCurrent || 0) >= currentIdx);
+          else if (scope === 'past') targetTransactions = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx);
+
+          // We need to update multiple items. Ideally backend handles this.
+          // Frontend simulation: Loop and update.
+          // IMPORTANT: For batch edits, we usually DO NOT change the date of all items to the same date,
+          // nor description if it has (1/x).
+          // We only update common fields: Category, Account/Card, Amount (if changed globally).
+          
+          targetTransactions.forEach(t => {
+            const batchPayload = { ...updatePayload };
+            
+            // Restore specific fields we shouldn't overwrite in batch unless intended
+            // If user changed Date, it applies to THIS installment. 
+            // Applying specific date to ALL installments ruins the schedule.
+            // For now, let's strictly update Category, Amount, Type, Account.
+            // We revert date and description to original 't' unless we want to be very smart.
+            
+            // Logic: If scope is Future, we assume user wants to change amount/category for future.
+            // We keep the original date of the target transaction `t`.
+            batchPayload.purchaseDate = t.purchaseDate; // Keep original date
+            batchPayload.description = t.description;   // Keep original desc (with index)
+            
+            // If amount changed, we apply new amount
+            batchPayload.amount = val.amount; 
+
+            this.financeService.updateTransaction(t.id, batchPayload).subscribe();
+          });
+          
+          // Close modal after triggering updates (optimistic UI)
+          this.closeModal();
+        }
+      }
+
+    } else {
+      // --- CREATE LOGIC ---
+      this.financeService.addTransaction(
+        val.description,
+        val.amount,
+        val.type,
+        val.date,
+        val.categoryId,
+        val.ownerId,
+        usingCard ? val.cardId : null,
+        usingCard ? val.installments : 1
+      ).subscribe({
+        next: () => this.closeModal(),
+        error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
+      });
+    }
+  }
+
+  // --- Modals & UI Helpers ---
 
   cancelOwnerEdit() {
     this.editingOwnerId.set(null);
@@ -267,10 +456,11 @@ export class AppComponent {
       if (transactionToEdit) {
         this.editingTransactionId.set(transactionToEdit.id);
         this.useCard.set(!!transactionToEdit.cardId);
+        
+        // If we are editing a batch, we might want to disable installments field
         const total = transactionToEdit.installmentTotal || 1;
         this.customInstallmentMode.set(total > 24);
 
-        // Find Category ID by Name if missing (Backend logic reverse lookup)
         let catId = transactionToEdit.categoryId;
         if (!catId && transactionToEdit.category) {
           const cat = this.financeService.categories().find(c => c.name === transactionToEdit.category);
@@ -278,18 +468,21 @@ export class AppComponent {
         }
 
         this.transactionForm.setValue({
-          description: transactionToEdit.description.replace(/\s\(\d+\/\d+\)$/, ''),
+          // If editing single item in batch, keep full description. If creating/batching, logic might differ.
+          description: transactionToEdit.description, 
           amount: transactionToEdit.amount,
           type: transactionToEdit.type,
           date: transactionToEdit.purchaseDate.split('T')[0],
           ownerId: transactionToEdit.ownerId || (this.financeService.owners()[0]?.id || ''),
           categoryId: catId || (this.financeService.categories()[0]?.id || ''),
           cardId: transactionToEdit.cardId || (this.financeService.cards()[0]?.id || ''),
-          installments: 1
+          installments: 1 // Installments usually not editable once created
         });
 
       } else {
+        // NEW Transaction
         this.editingTransactionId.set(null);
+        this.batchEditScope.set(null);
         this.customInstallmentMode.set(false);
         const defaultOwner = this.financeService.owners()[0]?.id || '';
         const defaultCat = this.financeService.categories()[0]?.id || '';
@@ -320,6 +513,9 @@ export class AppComponent {
     this.editingOwnerId.set(null);
     this.editingCardId.set(null);
     this.pendingAction.set(null);
+    // Do not reset batchEditScope here immediately if we are switching modals, 
+    // but typically close means cancel.
+    this.batchEditScope.set(null);
   }
 
   toggleUseCard() {
@@ -343,107 +539,6 @@ export class AppComponent {
 
     this.selectedMonth.set(m);
     this.selectedYear.set(y);
-  }
-
-  // --- Submissions & Batch Logic ---
-
-  initiateDelete(transaction: Transaction) {
-    if (transaction.groupId) {
-      this.pendingAction.set({ type: 'delete', transaction });
-      this.activeModal.set('batch-confirm');
-    } else {
-      if (confirm('Excluir esta movimentação?')) {
-        // Updated to use Subscription
-        this.financeService.deleteTransaction(transaction.id).subscribe({
-          next: () => this.closeModal(),
-          error: (err) => alert('Erro ao excluir: ' + err.message)
-        });
-      }
-    }
-  }
-
-  onSubmitTransaction() {
-    if (this.transactionForm.invalid) return;
-
-    const val = this.transactionForm.value;
-    const isExpense = val.type === 'expense';
-    const usingCard = isExpense && this.useCard();
-    const editId = this.editingTransactionId();
-
-    if (editId) {
-      // --- LÓGICA DE EDIÇÃO (UPDATE) ---
-      const original = this.financeService.transactions().find(t => t.id === editId);
-      
-      // Se for parcelado, mantém a lógica de batch (ainda não implementada no backend, mas segura no front)
-      if (original?.groupId) {
-         this.pendingAction.set({ type: 'edit', transaction: original, formValue: val });
-         this.activeModal.set('batch-confirm');
-         return; 
-      }
-
-      // Edição Simples: Mapeia o formulário para o formato do Backend
-      const updatePayload: Partial<Transaction> = {
-        description: val.description,
-        amount: val.amount,
-        type: val.type, // O Service vai converter para UpperCase
-        purchaseDate: `${val.date}T00:00:00`, // Formato ISO LocalDateTime
-        category: this.financeService.getCategory(val.categoryId)?.name || 'Outros', // Envia NOME, não ID
-        cardId: usingCard ? val.cardId : null
-      };
-
-      this.financeService.updateTransaction(editId, updatePayload).subscribe({
-        next: () => this.closeModal(),
-        error: (err) => alert('Erro ao atualizar: ' + err.message)
-      });
-
-    } else {
-      // --- LÓGICA DE CRIAÇÃO (CREATE) ---
-      this.financeService.addTransaction(
-        val.description,
-        val.amount,
-        val.type,
-        val.date,
-        val.categoryId,
-        val.ownerId,
-        usingCard ? val.cardId : null,
-        usingCard ? val.installments : 1
-      ).subscribe({
-        next: () => this.closeModal(),
-        error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
-      });
-    }
-  }
-
-  executeBatchAction(scope: BatchScope) {
-    const action = this.pendingAction();
-    if (!action) return;
-
-    const groupId = action.transaction.groupId!;
-    const groupTransactions = this.financeService.getGroupTransactions(groupId);
-    const currentIdx = action.transaction.installmentCurrent || 1;
-
-    let targetIds: string[] = [];
-
-    // Determine targets
-    if (scope === 'single') {
-      targetIds = [action.transaction.id];
-    } else if (scope === 'all') {
-      targetIds = groupTransactions.map(t => t.id);
-    } else if (scope === 'future') {
-      targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) >= currentIdx).map(t => t.id);
-    } else if (scope === 'past') {
-      targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx).map(t => t.id);
-    }
-
-    if (action.type === 'delete') {
-      this.financeService.deleteTransactionsBulk(targetIds).subscribe({
-        next: () => this.closeModal(),
-        error: (err) => alert('Erro ao excluir em lote: ' + err.message)
-      });
-    } else if (action.type === 'edit') {
-      // Batch edit logic would go here
-      this.closeModal();
-    }
   }
 
   // --- Helpers ---
