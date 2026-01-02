@@ -11,7 +11,7 @@ export interface Owner {
 }
 
 export interface Category {
-  id: string;
+  id?: string;
   name: string;
   color: string;
 }
@@ -39,7 +39,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType; // Frontend uses lowercase, Backend expects UPPERCASE
   purchaseDate: string; // ISO LocalDateTime string
-  category: string; // Backend stores the Name of the category
+  category: Category; // Backend stores the Name of the category
 
   // Optional fields (Frontend logic / Not persisted in current Backend entity)
   categoryId?: string;
@@ -59,32 +59,38 @@ export interface Transaction {
 })
 export class FinanceService {
   private http: HttpClient = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:8080/transaction';
+  private readonly API_URL = 'http://localhost:8080/transactions';
+  private readonly API_URL_CATEGORIES = 'http://localhost:8080/categories';
 
   // --- STATE ---
 
-  // LocalStorage managed entities (Not in Java yet)
+  // Mantemos Owners, Cards e Settings no LocalStorage por enquanto
   readonly owners = signal<Owner[]>([]);
-  readonly categories = signal<Category[]>([
-    { id: '1', name: 'Alimentação', color: '#ef4444' },
-    { id: '2', name: 'Lazer', color: '#f59e0b' },
-    { id: '3', name: 'Transporte', color: '#3b82f6' },
-    { id: '4', name: 'Saúde', color: '#10b981' },
-    { id: '5', name: 'Educação', color: '#8b5cf6' },
-    { id: '6', name: 'Salário/Renda', color: '#22c55e' }
-  ]);
   readonly cards = signal<CreditCard[]>([
     { id: '1', name: 'Santander', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
     { id: '2', name: 'Itaú', ownerId: '2', closingDay: 20, dueDay: 25, color: '#1e293b' }
   ]);
   readonly settings = signal<UserSettings>({ monthStartDay: 1, darkMode: false });
 
+  // readonly categories = signal<Category[]>([
+  //   { id: '1', name: 'Alimentação', color: '#ef4444' },
+  //   { id: '2', name: 'Lazer', color: '#f59e0b' },
+  //   { id: '3', name: 'Transporte', color: '#3b82f6' },
+  //   { id: '4', name: 'Saúde', color: '#10b981' },
+  //   { id: '5', name: 'Educação', color: '#8b5cf6' },
+  //   { id: '6', name: 'Salário/Renda', color: '#22c55e' }
+  // ]);
+
+  // Categorias agora vêm do BACKEND (Inicializa vazio)
+  readonly categories = signal<Category[]>([]);
+
   // Backend managed entity (Private write, Public read-only)
   private _transactions = signal<Transaction[]>([]);
   readonly transactions = this._transactions.asReadonly();
 
   constructor() {
-    this.loadStorageData(); // Load Owners, Cards, Categories, Settings
+    this.loadStorageData(); // Load Owners, Cards, Settings
+    this.loadCategories(); // Load Categories from API
     this.loadAll(); // Load Transactions from API
 
     if (this.owners().length === 0) {
@@ -95,16 +101,12 @@ export class FinanceService {
     }
 
     // Auto-save effects (Only for non-backend entities)
-    effect(() => localStorage.setItem('fincontrol_categories_v2', JSON.stringify(this.categories())));
     effect(() => localStorage.setItem('fincontrol_cards_v2', JSON.stringify(this.cards())));
     effect(() => localStorage.setItem('fincontrol_owners_v2', JSON.stringify(this.owners())));
     effect(() => localStorage.setItem('fincontrol_settings_v2', JSON.stringify(this.settings())));
   }
 
   private loadStorageData() {
-    const savedCats = localStorage.getItem('fincontrol_categories_v2');
-    if (savedCats) this.categories.set(JSON.parse(savedCats));
-
     const savedCards = localStorage.getItem('fincontrol_cards_v2');
     if (savedCards) this.cards.set(JSON.parse(savedCards));
 
@@ -117,6 +119,32 @@ export class FinanceService {
 
   // --- HTTP METHODS ---
 
+  loadCategories() {
+    this.http.get<Category[]>(this.API_URL_CATEGORIES).subscribe({
+      next: (data) => this.categories.set(data),
+      error: (err) => console.error('Error ao carregar categorias: ', err)
+    });
+  }
+
+  addCategory(name: string, color: string) {
+    const newCategory = { name, color }; // Java vai gerar o ID
+    this.http.post<Category>(this.API_URL_CATEGORIES, newCategory).subscribe({
+      next: (newCat) => {
+        this.categories.update(prev => [...prev, newCat]);
+      },
+      error: (err) => alert('Error ao criar categoria: ' + err.message)
+    });
+  }
+
+  deleteCategory(id: string) {
+    this.http.delete(`${this.API_URL_CATEGORIES}/${id}`).subscribe({
+      next: () => {
+        this.categories.update(prev => prev.filter(c => c.id !== id));
+      },
+      error: (err) => alert('Erro ao excluir categoria (pode estar em uso): ' + err.message)
+    });
+  }
+
   loadAll() {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
@@ -124,22 +152,16 @@ export class FinanceService {
         const mappedData: Transaction[] = data.map(t => {
           const dateObj = new Date(t.purchaseDate);
 
-          // Try to recover categoryId from Name to show correct colors
-          const matchedCategory = this.categories().find(c => c.name === t.category);
-
           return {
             ...t,
             // Convert Java Enum (INCOME) to Frontend (income)
             type: t.type.toLowerCase() as TransactionType,
 
-            // Restore IDs if possible (Best effort)
-            categoryId: matchedCategory?.id,
+            categoryId: t.category?.id,
 
             // Calculate effective dates for UI filtering
             effectiveMonth: dateObj.getMonth(),
             effectiveYear: dateObj.getFullYear(),
-
-            // Defaults for fields missing in Backend
             installmentCurrent: 1,
             installmentTotal: 1
           };
@@ -165,9 +187,6 @@ export class FinanceService {
     const year = parseInt(yStr);
     const month = parseInt(mStr) - 1;
     const day = parseInt(dStr);
-
-    // Resolve Category Name from ID (Backend expects String)
-    const categoryName = this.categories().find(c => c.id === categoryId)?.name || 'Geral';
 
     let startMonth = month;
     let startYear = year;
@@ -205,7 +224,7 @@ export class FinanceService {
       const y = effectiveDate.getFullYear();
       const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
       const d = String(effectiveDate.getDate()).padStart(2, '0');
-      const formattedDate = `${y}-${m}-${d}T00:00:00`
+      const formattedDate = `${y}-${m}-${d}T00:00:00Z`
 
       // Construct Backend Payload
       const payload = {
@@ -213,7 +232,7 @@ export class FinanceService {
         amount: amountPerInstallment,
         type: type.toUpperCase(), // Enum JAVA: INCOME, EXPENSE
         purchaseDate: formattedDate, // ISO LocalDateTime
-        category: categoryName,
+        category: { id: categoryId },
 
         // Note: ownerId, cardId, groupId are sent but Backend likely ignores them 
         // unless you add columns to your Transaction Entity.
@@ -224,7 +243,7 @@ export class FinanceService {
 
       //Teste log Installments
       console.log(`Parcela ${i + 1}: Intenção dia ${day} -> Gerado: ${formattedDate}`);
-      
+
       requests.push(this.http.post(this.API_URL, payload));
     }
 
@@ -285,11 +304,6 @@ export class FinanceService {
   toggleDarkMode() {
     this.settings.update(s => ({ ...s, darkMode: !s.darkMode }));
   }
-
-  addCategory(name: string, color: string) {
-    this.categories.update(prev => [...prev, { id: crypto.randomUUID(), name, color }]);
-  }
-  deleteCategory(id: string) { this.categories.update(prev => prev.filter(c => c.id !== id)); }
 
   addCard(name: string, ownerId: string, closingDay: number, dueDay: number, color: string) {
     this.cards.update(prev => [...prev, { id: crypto.randomUUID(), name, ownerId, closingDay, dueDay, color }]);

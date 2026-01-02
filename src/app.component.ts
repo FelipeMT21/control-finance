@@ -1,4 +1,3 @@
-
 import { Component, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
@@ -239,12 +238,13 @@ export class AppComponent {
     ];
   });
 
+  // --- CORREÇÃO 1: Logica do Gráfico ---
   categoryChartData = computed<ChartData[]>(() => {
     const expenses = this.filteredTransactions().filter(t => t.type === 'expense');
     const groups: Record<string, number> = {};
     for (const t of expenses) {
-      // Use category ID if available, otherwise use Name (Backend) as key
-      const key = t.categoryId || t.category || 'Outros';
+      // FIX: Agora t.category é um objeto, pegamos o ID direto.
+      const key = t.categoryId || t.category?.id || 'Outros'; 
       groups[key] = (groups[key] || 0) + t.amount;
     }
     return Object.entries(groups)
@@ -357,8 +357,10 @@ export class AppComponent {
         type: val.type,
         // Backend stores Date as string
         purchaseDate: `${val.date}T00:00:00`, 
-        // Backend stores Category Name
-        category: this.financeService.getCategory(val.categoryId)?.name || 'Outros',
+        // Backend expects Object with ID
+        category: {
+          id: val.categoryId
+        } as any, // Cast "as any" para evitar conflito com interface estrita se houver
         // Optional Frontend fields
         categoryId: val.categoryId,
         cardId: usingCard ? val.cardId : null,
@@ -384,26 +386,12 @@ export class AppComponent {
           else if (scope === 'past') targetTransactions = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx);
 
           // We need to update multiple items. Ideally backend handles this.
-          // Frontend simulation: Loop and update.
-          // IMPORTANT: For batch edits, we usually DO NOT change the date of all items to the same date,
-          // nor description if it has (1/x).
-          // We only update common fields: Category, Account/Card, Amount (if changed globally).
-          
           targetTransactions.forEach(t => {
             const batchPayload = { ...updatePayload };
             
             // Restore specific fields we shouldn't overwrite in batch unless intended
-            // If user changed Date, it applies to THIS installment. 
-            // Applying specific date to ALL installments ruins the schedule.
-            // For now, let's strictly update Category, Amount, Type, Account.
-            // We revert date and description to original 't' unless we want to be very smart.
-            
-            // Logic: If scope is Future, we assume user wants to change amount/category for future.
-            // We keep the original date of the target transaction `t`.
             batchPayload.purchaseDate = t.purchaseDate; // Keep original date
             batchPayload.description = t.description;   // Keep original desc (with index)
-            
-            // If amount changed, we apply new amount
             batchPayload.amount = val.amount; 
 
             this.financeService.updateTransaction(t.id, batchPayload).subscribe();
@@ -449,6 +437,7 @@ export class AppComponent {
     });
   }
 
+  // --- CORREÇÃO 2: Lógica do Modal de Edição ---
   openModal(type: 'transaction' | 'settings' | 'batch-confirm', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
 
@@ -457,18 +446,17 @@ export class AppComponent {
         this.editingTransactionId.set(transactionToEdit.id);
         this.useCard.set(!!transactionToEdit.cardId);
         
-        // If we are editing a batch, we might want to disable installments field
         const total = transactionToEdit.installmentTotal || 1;
         this.customInstallmentMode.set(total > 24);
 
         let catId = transactionToEdit.categoryId;
+        
+        // FIX: Se não tem catId solto, pegamos do objeto Category direto
         if (!catId && transactionToEdit.category) {
-          const cat = this.financeService.categories().find(c => c.name === transactionToEdit.category);
-          if (cat) catId = cat.id;
+            catId = transactionToEdit.category.id;
         }
 
         this.transactionForm.setValue({
-          // If editing single item in batch, keep full description. If creating/batching, logic might differ.
           description: transactionToEdit.description, 
           amount: transactionToEdit.amount,
           type: transactionToEdit.type,
@@ -476,7 +464,7 @@ export class AppComponent {
           ownerId: transactionToEdit.ownerId || (this.financeService.owners()[0]?.id || ''),
           categoryId: catId || (this.financeService.categories()[0]?.id || ''),
           cardId: transactionToEdit.cardId || (this.financeService.cards()[0]?.id || ''),
-          installments: 1 // Installments usually not editable once created
+          installments: 1 
         });
 
       } else {
@@ -513,8 +501,6 @@ export class AppComponent {
     this.editingOwnerId.set(null);
     this.editingCardId.set(null);
     this.pendingAction.set(null);
-    // Do not reset batchEditScope here immediately if we are switching modals, 
-    // but typically close means cancel.
     this.batchEditScope.set(null);
   }
 
