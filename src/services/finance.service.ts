@@ -17,9 +17,9 @@ export interface Category {
 }
 
 export interface CreditCard {
-  id: string;
+  id?: string;
   name: string;
-  ownerId: string;
+  owner: Owner;
   closingDay: number;
   dueDay: number;
   color: string;
@@ -37,18 +37,22 @@ export interface Transaction {
   id: string; // UUID from Backend
   description: string;
   amount: number;
-  type: TransactionType; // Frontend uses lowercase, Backend expects UPPERCASE
-  purchaseDate: string; // ISO LocalDateTime string
+  type: TransactionType;
+  purchaseDate: string;
+
+  // Objetos completos vindos do Java (JPA)
   category: Category;
-  categoryId?: string;
   owner: Owner;
+  creditCard: CreditCard | null;
+
+  // IDs auxiliares para o Frontend
+  categoryId?: string;
   ownerId?: string;
   cardId?: string | null;
   groupId?: string;
+
   installmentCurrent?: number;
   installmentTotal?: number;
-
-  // Computed fields (Calculated on frontend after load)
   effectiveMonth?: number;
   effectiveYear?: number;
 }
@@ -61,31 +65,21 @@ export class FinanceService {
   private readonly API_URL = 'http://localhost:8080/transactions';
   private readonly API_URL_CATEGORIES = 'http://localhost:8080/categories';
   private readonly API_URL_OWNERS = 'http://localhost:8080/owners';
+  private readonly API_URL_CARDS = 'http://localhost:8080/cards';
 
   // --- STATE ---
 
-  // Mantemos Owners, Cards e Settings no LocalStorage por enquanto
-  // readonly owners = signal<Owner[]>([]);
-  readonly cards = signal<CreditCard[]>([
-    { id: '1', name: 'Santander', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
-    { id: '2', name: 'Itaú', ownerId: '2', closingDay: 20, dueDay: 25, color: '#1e293b' }
-  ]);
+  // Settings no LocalStorage por enquanto
   readonly settings = signal<UserSettings>({ monthStartDay: 1, darkMode: false });
-
-  // readonly categories = signal<Category[]>([
-  //   { id: '1', name: 'Alimentação', color: '#ef4444' },
-  //   { id: '2', name: 'Lazer', color: '#f59e0b' },
-  //   { id: '3', name: 'Transporte', color: '#3b82f6' },
-  //   { id: '4', name: 'Saúde', color: '#10b981' },
-  //   { id: '5', name: 'Educação', color: '#8b5cf6' },
-  //   { id: '6', name: 'Salário/Renda', color: '#22c55e' }
-  // ]);
 
   // Categorias agora vêm do BACKEND (Inicializa vazio)
   readonly categories = signal<Category[]>([]);
 
   // Donos agora vêm do BACKEND (Inicializa vazio)
   readonly owners = signal<Owner[]>([]);
+
+  // Cartões agora vêm do BACKEND (Inicializa vazio)
+  readonly cards = signal<CreditCard[]>([]);
 
   // Backend managed entity (Private write, Public read-only)
   private _transactions = signal<Transaction[]>([]);
@@ -95,24 +89,14 @@ export class FinanceService {
     this.loadStorageData(); // Load Cards, Settings
     this.loadCategories(); // Load Categories from API
     this.loadOwners(); // Load Owners from API
+    this.loadCards(); // Load Cards from API
     this.loadAll(); // Load Transactions from API
 
-    // if (this.owners().length === 0) {
-    //   this.owners.set([
-    //     { id: '1', name: 'Titular 1' },
-    //     { id: '2', name: 'Titular 2' }
-    //   ]);
-    // }
-
     // Auto-save effects (Only for non-backend entities)
-    effect(() => localStorage.setItem('fincontrol_cards_v2', JSON.stringify(this.cards())));
     effect(() => localStorage.setItem('fincontrol_settings_v2', JSON.stringify(this.settings())));
   }
 
   private loadStorageData() {
-    const savedCards = localStorage.getItem('fincontrol_cards_v2');
-    if (savedCards) this.cards.set(JSON.parse(savedCards));
-
     const savedSettings = localStorage.getItem('fincontrol_settings_v2');
     if (savedSettings) this.settings.set(JSON.parse(savedSettings));
   }
@@ -148,7 +132,7 @@ export class FinanceService {
   loadOwners() {
     this.http.get<Owner[]>(this.API_URL_OWNERS).subscribe({
       next: (data) => this.owners.set(data),
-      error: (err) => console.log('Erro ao carregar donos: ', err) 
+      error: (err) => console.log('Erro ao carregar donos: ', err)
     });
   }
 
@@ -180,10 +164,60 @@ export class FinanceService {
     });
   }
 
+  loadCards() {
+    this.http.get<CreditCard[]>(this.API_URL_CARDS).subscribe({
+      next: (data) => this.cards.set(data),
+      error: (err) => console.log("Erro ao carregar os cartões ", err)
+    });
+  }
+
+  addCard(name: string, ownerId: string, closingDay: number, dueDay: number, color: string) {
+    const newCard = {
+      name,
+      closingDay,
+      dueDay,
+      color,
+      owner: { id: ownerId }
+    }
+    this.http.post<CreditCard>(this.API_URL_CARDS, newCard).subscribe({
+      next: (cardSave) => {
+        this.cards.update(prev => [...prev, cardSave]);
+      },
+      error: (err) => alert('Erro ao criar cartão ' + err.message)
+    });
+  }
+  updateCard(id: string, updates: Partial<CreditCard>) {
+    const payload = { ...updates };
+    this.http.put<CreditCard>(`${this.API_URL_CARDS}/${id}`, payload).subscribe({
+      next: (cardUpdate) => {
+        this.cards.update(prev => prev.map(c => c.id === id ? cardUpdate : c));
+      },
+      error: (err) => alert('Erro ao atualizar o cartão: ' + err.message)
+    });
+  }
+
+  patchCard(id: string, updates: Partial<CreditCard>) {
+    const payload = { ...updates };
+    this.http.patch<CreditCard>(`${this.API_URL_CARDS}/${id}`, payload).subscribe({
+      next: (cardUpdate) => {
+        this.cards.update(prev => prev.map(c => c.id === id ? cardUpdate : c));
+      },
+      error: (err) => alert('Erro ao atualizar o cartão: ' + err.message)
+    });
+  }
+
+  deleteCard(id: string) {
+    this.http.delete(`${this.API_URL_CARDS}/${id}`).subscribe({
+      next: () => {
+        this.cards.update(prev => prev.filter(c => c.id !== id));
+      },
+      error: (err) => alert('Erro ao excluir cartão (verifique se há transações nele): ' + err.message)
+    })
+  }
+
   loadAll() {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
-        // Map backend data to frontend structure
         const mappedData: Transaction[] = data.map(t => {
           const dateObj = new Date(t.purchaseDate);
 
@@ -192,7 +226,10 @@ export class FinanceService {
             // Convert Java Enum (INCOME) to Frontend (income)
             type: t.type.toLowerCase() as TransactionType,
 
+            // Mapeamento de IDs para compatibilidade com os filtros do Componente
             categoryId: t.category?.id,
+            ownerId: t.owner?.id,
+            cardId: t.creditCard?.id || null,
 
             // Calculate effective dates for UI filtering
             effectiveMonth: dateObj.getMonth(),
@@ -269,7 +306,7 @@ export class FinanceService {
         purchaseDate: formattedDate, // ISO LocalDateTime
         category: { id: categoryId },
         owner: { id: ownerId },
-        cardId: type === 'income' ? null : cardId,
+        creditCard: (type === 'expense' && cardId) ? { id: cardId } : null, // Envia objeto ou null
         groupId: groupId
       };
 
@@ -325,14 +362,6 @@ export class FinanceService {
   toggleDarkMode() {
     this.settings.update(s => ({ ...s, darkMode: !s.darkMode }));
   }
-
-  addCard(name: string, ownerId: string, closingDay: number, dueDay: number, color: string) {
-    this.cards.update(prev => [...prev, { id: crypto.randomUUID(), name, ownerId, closingDay, dueDay, color }]);
-  }
-  updateCard(id: string, updates: Partial<CreditCard>) {
-    this.cards.update(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  }
-  deleteCard(id: string) { this.cards.update(prev => prev.filter(c => c.id !== id)); }
 
   // --- READ HELPERS ---
 

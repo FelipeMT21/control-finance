@@ -86,7 +86,7 @@ export class AppComponent {
       if (this.useCard() && cardId) {
         const card = this.financeService.getCard(cardId);
         if (card) {
-          this.transactionForm.patchValue({ ownerId: card.ownerId }, { emitEvent: false });
+          this.transactionForm.patchValue({ ownerId: card.owner.id }, { emitEvent: false });
         }
       }
     });
@@ -142,9 +142,11 @@ export class AppComponent {
       const eMonth = t.effectiveMonth ?? new Date(t.purchaseDate).getMonth();
       const eYear = t.effectiveYear ?? new Date(t.purchaseDate).getFullYear();
 
-      // 1. Filter by CARD (Most specific)
+      // 1. Filtro por CARTÃO
       if (currentCardId) {
-        if (t.cardId !== currentCardId) return false;
+        // Tenta pegar do objeto do Java, senão do mapeamento que fizemos no loadAll
+        const tCardId = t.creditCard?.id || t.cardId;
+        if (tCardId !== currentCardId) return false;
         return eMonth === this.selectedMonth() && eYear === this.selectedYear();
       }
 
@@ -161,14 +163,13 @@ export class AppComponent {
         const tDate = new Date(y, m - 1, d);
         dateMatch = tDate >= periodStart && tDate < periodEnd;
       }
-      
+
       if (!dateMatch) return false;
 
-      // 2. Filter by OWNER (Context)
-      // If we are in "Overview" (selectedOwnerId is null), show all.
-      // If we are in "Felipe" (selectedOwnerId set), show only Felipe's transactions.
+      // 2. Filtro por DONO
       if (currentOwnerId) {
-        if (t.ownerId !== currentOwnerId) return false;
+        const tOwnerId = t.owner?.id || t.ownerId;
+        if (tOwnerId !== currentOwnerId) return false;
       }
 
       return true;
@@ -180,7 +181,8 @@ export class AppComponent {
   ownerCards = computed(() => {
     const ownerId = this.selectedOwnerId();
     if (!ownerId) return [];
-    return this.financeService.cards().filter(c => c.ownerId === ownerId);
+    // AJUSTE: Acessando o ID dentro do objeto owner
+    return this.financeService.cards().filter(c => c.owner.id === ownerId);
   });
 
   totalIncome = computed(() => {
@@ -220,7 +222,7 @@ export class AppComponent {
 
     return {
       cardName: card.name,
-      ownerName: this.financeService.getOwner(card.ownerId)?.name,
+      ownerName: this.financeService.getOwner(card.owner.id)?.name,
       closingDate: `${card.closingDay}/${this.selectedMonth() + 1}`,
       dueDate: `${card.dueDay}/${this.selectedMonth() + 1}`,
       periodStart: startDate,
@@ -244,7 +246,7 @@ export class AppComponent {
     const groups: Record<string, number> = {};
     for (const t of expenses) {
       // FIX: Agora t.category é um objeto, pegamos o ID direto.
-      const key = t.categoryId || t.category?.id || 'Outros'; 
+      const key = t.categoryId || t.category?.id || 'Outros';
       groups[key] = (groups[key] || 0) + t.amount;
     }
     return Object.entries(groups)
@@ -331,7 +333,7 @@ export class AppComponent {
     if (action.type === 'edit') {
       this.batchEditScope.set(scope);
       this.activeModal.set(null); // Close batch modal
-      
+
       // Slight timeout to allow modal animation to clear or just switch immediately
       // We switch to transaction modal
       setTimeout(() => {
@@ -355,7 +357,7 @@ export class AppComponent {
         description: val.description,
         amount: val.amount,
         type: val.type,
-        purchaseDate: `${val.date}T12:00:00Z`, 
+        purchaseDate: `${val.date}T12:00:00Z`,
         category: { id: val.categoryId } as any,
         owner: { id: val.ownerId } as any,
         categoryId: val.categoryId,
@@ -384,15 +386,15 @@ export class AppComponent {
           // We need to update multiple items. Ideally backend handles this.
           targetTransactions.forEach(t => {
             const batchPayload = { ...updatePayload };
-            
+
             // Restore specific fields we shouldn't overwrite in batch unless intended
             batchPayload.purchaseDate = t.purchaseDate; // Keep original date
             batchPayload.description = t.description;   // Keep original desc (with index)
-            batchPayload.amount = val.amount; 
+            batchPayload.amount = val.amount;
 
             this.financeService.updateTransaction(t.id, batchPayload).subscribe();
           });
-          
+
           // Close modal after triggering updates (optimistic UI)
           this.closeModal();
         }
@@ -440,27 +442,28 @@ export class AppComponent {
     if (type === 'transaction') {
       if (transactionToEdit) {
         this.editingTransactionId.set(transactionToEdit.id);
-        this.useCard.set(!!transactionToEdit.cardId);
-        
+
+        // 1. Pegamos os IDs de forma limpa e direta
+        const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId;
+        const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId;
+        const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId;
+
+        // 2. Definimos o estado visual do cartão
+        this.useCard.set(!!tCardId);
+
         const total = transactionToEdit.installmentTotal || 1;
         this.customInstallmentMode.set(total > 24);
 
-        let catId = transactionToEdit.categoryId;
-        
-        // FIX: Se não tem catId solto, pegamos do objeto Category direto
-        if (!catId && transactionToEdit.category) {
-            catId = transactionToEdit.category.id;
-        }
-
+        // 3. Setamos o formulário de uma vez só
         this.transactionForm.setValue({
-          description: transactionToEdit.description, 
+          description: transactionToEdit.description,
           amount: transactionToEdit.amount,
           type: transactionToEdit.type,
           date: transactionToEdit.purchaseDate.split('T')[0],
-          ownerId: transactionToEdit.ownerId || (this.financeService.owners()[0]?.id || ''),
-          categoryId: catId || (this.financeService.categories()[0]?.id || ''),
-          cardId: transactionToEdit.cardId || (this.financeService.cards()[0]?.id || ''),
-          installments: 1 
+          ownerId: tOwnerId || '',
+          categoryId: tCatId || '', // Usando a constante única definida acima
+          cardId: tCardId || '',
+          installments: 1
         });
 
       } else {
