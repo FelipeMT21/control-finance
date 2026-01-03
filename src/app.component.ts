@@ -355,13 +355,9 @@ export class AppComponent {
         description: val.description,
         amount: val.amount,
         type: val.type,
-        // Backend stores Date as string
-        purchaseDate: `${val.date}T00:00:00`, 
-        // Backend expects Object with ID
-        category: {
-          id: val.categoryId
-        } as any, // Cast "as any" para evitar conflito com interface estrita se houver
-        // Optional Frontend fields
+        purchaseDate: `${val.date}T12:00:00Z`, 
+        category: { id: val.categoryId } as any,
+        owner: { id: val.ownerId } as any,
         categoryId: val.categoryId,
         cardId: usingCard ? val.cardId : null,
         ownerId: val.ownerId

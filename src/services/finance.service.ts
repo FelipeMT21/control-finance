@@ -39,10 +39,9 @@ export interface Transaction {
   amount: number;
   type: TransactionType; // Frontend uses lowercase, Backend expects UPPERCASE
   purchaseDate: string; // ISO LocalDateTime string
-  category: Category; // Backend stores the Name of the category
-
-  // Optional fields (Frontend logic / Not persisted in current Backend entity)
+  category: Category;
   categoryId?: string;
+  owner: Owner;
   ownerId?: string;
   cardId?: string | null;
   groupId?: string;
@@ -61,11 +60,12 @@ export class FinanceService {
   private http: HttpClient = inject(HttpClient);
   private readonly API_URL = 'http://localhost:8080/transactions';
   private readonly API_URL_CATEGORIES = 'http://localhost:8080/categories';
+  private readonly API_URL_OWNERS = 'http://localhost:8080/owners';
 
   // --- STATE ---
 
   // Mantemos Owners, Cards e Settings no LocalStorage por enquanto
-  readonly owners = signal<Owner[]>([]);
+  // readonly owners = signal<Owner[]>([]);
   readonly cards = signal<CreditCard[]>([
     { id: '1', name: 'Santander', ownerId: '1', closingDay: 5, dueDay: 10, color: '#820ad1' },
     { id: '2', name: 'Itaú', ownerId: '2', closingDay: 20, dueDay: 25, color: '#1e293b' }
@@ -84,34 +84,34 @@ export class FinanceService {
   // Categorias agora vêm do BACKEND (Inicializa vazio)
   readonly categories = signal<Category[]>([]);
 
+  // Donos agora vêm do BACKEND (Inicializa vazio)
+  readonly owners = signal<Owner[]>([]);
+
   // Backend managed entity (Private write, Public read-only)
   private _transactions = signal<Transaction[]>([]);
   readonly transactions = this._transactions.asReadonly();
 
   constructor() {
-    this.loadStorageData(); // Load Owners, Cards, Settings
+    this.loadStorageData(); // Load Cards, Settings
     this.loadCategories(); // Load Categories from API
+    this.loadOwners(); // Load Owners from API
     this.loadAll(); // Load Transactions from API
 
-    if (this.owners().length === 0) {
-      this.owners.set([
-        { id: '1', name: 'Titular 1' },
-        { id: '2', name: 'Titular 2' }
-      ]);
-    }
+    // if (this.owners().length === 0) {
+    //   this.owners.set([
+    //     { id: '1', name: 'Titular 1' },
+    //     { id: '2', name: 'Titular 2' }
+    //   ]);
+    // }
 
     // Auto-save effects (Only for non-backend entities)
     effect(() => localStorage.setItem('fincontrol_cards_v2', JSON.stringify(this.cards())));
-    effect(() => localStorage.setItem('fincontrol_owners_v2', JSON.stringify(this.owners())));
     effect(() => localStorage.setItem('fincontrol_settings_v2', JSON.stringify(this.settings())));
   }
 
   private loadStorageData() {
     const savedCards = localStorage.getItem('fincontrol_cards_v2');
     if (savedCards) this.cards.set(JSON.parse(savedCards));
-
-    const savedOwners = localStorage.getItem('fincontrol_owners_v2');
-    if (savedOwners) this.owners.set(JSON.parse(savedOwners));
 
     const savedSettings = localStorage.getItem('fincontrol_settings_v2');
     if (savedSettings) this.settings.set(JSON.parse(savedSettings));
@@ -142,6 +142,41 @@ export class FinanceService {
         this.categories.update(prev => prev.filter(c => c.id !== id));
       },
       error: (err) => alert('Erro ao excluir categoria (pode estar em uso): ' + err.message)
+    });
+  }
+
+  loadOwners() {
+    this.http.get<Owner[]>(this.API_URL_OWNERS).subscribe({
+      next: (data) => this.owners.set(data),
+      error: (err) => console.log('Erro ao carregar donos: ', err) 
+    });
+  }
+
+  addOwner(name: string) {
+    const newOwner = { name };
+    this.http.post<Owner>(this.API_URL_OWNERS, newOwner).subscribe({
+      next: (newOwner) => {
+        this.owners.update(prev => [...prev, newOwner])
+      },
+      error: (err) => alert('Erro ao excluir dono (pode estar em uso); ' + err.message)
+    });
+  }
+
+  updateOwner(id: string, name: string) {
+    this.http.put<Owner>(`${this.API_URL_OWNERS}/${id}`, { name }).subscribe({
+      next: (ownerUpdate) => {
+        this.owners.update(prev => prev.map(o => o.id === id ? ownerUpdate : o))
+      },
+      error: (err) => alert('Erro ao atualizar dono: ' + err.message)
+    });
+  }
+
+  deleteOwner(id: string) {
+    this.http.delete(`${this.API_URL_OWNERS}/${id}`).subscribe({
+      next: () => {
+        this.owners.update(prev => prev.filter(o => o.id !== id))
+      },
+      error: (err) => alert('Erro ao excluir dono (pode ter transações vinculadas): ' + err.message)
     });
   }
 
@@ -224,7 +259,7 @@ export class FinanceService {
       const y = effectiveDate.getFullYear();
       const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
       const d = String(effectiveDate.getDate()).padStart(2, '0');
-      const formattedDate = `${y}-${m}-${d}T00:00:00Z`
+      const formattedDate = `${y}-${m}-${d}T12:00:00Z`
 
       // Construct Backend Payload
       const payload = {
@@ -233,10 +268,7 @@ export class FinanceService {
         type: type.toUpperCase(), // Enum JAVA: INCOME, EXPENSE
         purchaseDate: formattedDate, // ISO LocalDateTime
         category: { id: categoryId },
-
-        // Note: ownerId, cardId, groupId are sent but Backend likely ignores them 
-        // unless you add columns to your Transaction Entity.
-        ownerId,
+        owner: { id: ownerId },
         cardId: type === 'income' ? null : cardId,
         groupId: groupId
       };
@@ -284,17 +316,6 @@ export class FinanceService {
     );
   }
 
-  // updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
-  //   // Placeholder: Ideally should use PUT/PATCH to backend
-  //   // Since prompt focused on Load/Add/Delete, we leave basic impl
-  //   // Note: Backend 'update' expects full object, frontend sends partial. 
-  //   // This requires a fetch-merge-update strategy or a patch endpoint.
-  //   return new Observable(observer => {
-  //      observer.next();
-  //      observer.complete();
-  //   });
-  // }
-
   // --- SETTINGS & LOCAL DATA HELPERS ---
 
   updateMonthStartDay(day: number) {
@@ -312,14 +333,6 @@ export class FinanceService {
     this.cards.update(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
   }
   deleteCard(id: string) { this.cards.update(prev => prev.filter(c => c.id !== id)); }
-
-  addOwner(name: string) {
-    this.owners.update(prev => [...prev, { id: crypto.randomUUID(), name }]);
-  }
-  updateOwner(id: string, name: string) {
-    this.owners.update(prev => prev.map(o => o.id === id ? { ...o, name } : o));
-  }
-  deleteOwner(id: string) { this.owners.update(prev => prev.filter(o => o.id !== id)); }
 
   // --- READ HELPERS ---
 
