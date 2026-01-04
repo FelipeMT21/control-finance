@@ -297,7 +297,7 @@ export class FinanceService {
 
     const totalInstallments = (type === 'expense') ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
-    const groupId = totalInstallments > 1 ? crypto.randomUUID() : null;
+    const groupId = totalInstallments > 1 ? this.generateUUID() : null;
 
     const requests: Observable<any>[] = [];
 
@@ -382,8 +382,15 @@ export class FinanceService {
     return this.transactions().filter(t => t.groupId === groupId).sort((a, b) => (a.installmentCurrent || 0) - (b.installmentCurrent || 0));
   }
 
-  // --- ADICIONE ISTO NO SEU FINANCE.SERVICE.TS ---
-  
+  // Função manual para gerar UUID (funciona em HTTP e HTTPS)
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   // Função auxiliar para buscar o grupo COMPLETO no servidor
   fetchGroup(groupId: string): Observable<Transaction[]> {
     // Como seu backend não tem um endpoint específico "/group/:id", 
@@ -394,7 +401,7 @@ export class FinanceService {
           .filter(t => t.groupId === groupId) // Filtra pelo ID do grupo
           .map(t => {
             // Mapeia igual ao loadAll para garantir compatibilidade
-            const dateRef = new Date(t.billingDate || t.purchaseDate); 
+            const dateRef = new Date(t.billingDate || t.purchaseDate);
             return {
               ...t,
               type: t.type.toLowerCase() as TransactionType,
