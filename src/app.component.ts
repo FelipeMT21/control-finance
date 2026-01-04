@@ -67,6 +67,14 @@ export class AppComponent {
       }
     });
 
+    // Faz o carregamento inicial filtrado pelo mês e ano que foi definido nos signals
+    this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+
+    // Restante das inicializações dos formulários...
+    this.transactionForm = this.fb.group({
+      // ...
+    });
+
     this.transactionForm = this.fb.group({
       description: ['', Validators.required],
       amount: [null, [Validators.required, Validators.min(0.01)]],
@@ -120,17 +128,7 @@ export class AppComponent {
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
-    const name = months[this.selectedMonth()];
-    const startDay = this.financeService.settings().monthStartDay;
-
-    if (startDay === 1 || this.selectedCardId()) {
-      return name;
-    }
-
-    const rangeStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
-    const rangeEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay - 1);
-
-    return `${name} (${rangeStart.getDate()}/${rangeStart.getMonth() + 1} a ${rangeEnd.getDate()}/${rangeEnd.getMonth() + 1})`;
+    return months[this.selectedMonth()];
   });
 
   filteredTransactions = computed(() => {
@@ -138,35 +136,22 @@ export class AppComponent {
       const currentCardId = this.selectedCardId();
       const currentOwnerId = this.selectedOwnerId();
 
-      // Ensure effectiveMonth is present (fallback for safety)
-      const eMonth = t.effectiveMonth ?? new Date(t.purchaseDate).getMonth();
-      const eYear = t.effectiveYear ?? new Date(t.purchaseDate).getFullYear();
-
-      // 1. Filtro por CARTÃO
-      if (currentCardId) {
-        // Tenta pegar do objeto do Java, senão do mapeamento que fizemos no loadAll
-        const tCardId = t.creditCard?.id || t.cardId;
-        if (tCardId !== currentCardId) return false;
-        return eMonth === this.selectedMonth() && eYear === this.selectedYear();
-      }
-
-      const startDay = this.financeService.settings().monthStartDay;
-      let dateMatch = false;
-
-      // Date Logic
-      if (startDay === 1) {
-        dateMatch = eMonth === this.selectedMonth() && eYear === this.selectedYear();
-      } else {
-        const periodStart = new Date(this.selectedYear(), this.selectedMonth(), startDay);
-        const periodEnd = new Date(this.selectedYear(), this.selectedMonth() + 1, startDay);
-        const [y, m, d] = t.purchaseDate.split('T')[0].split('-').map(Number);
-        const tDate = new Date(y, m - 1, d);
-        dateMatch = tDate >= periodStart && tDate < periodEnd;
-      }
+      // 1. Filtro de Mês e Ano (Prioridade total aos campos do Java)
+      // Note que comparamos o que está no objeto com o que foi selecionado nas setas
+      const dateMatch = t.effectiveMonth === this.selectedMonth() &&
+        t.effectiveYear === this.selectedYear();
 
       if (!dateMatch) return false;
 
-      // 2. Filtro por DONO
+      // 2. Filtro por CARTÃO
+      // Se houver um cartão selecionado no filtro lateral, mostramos apenas ele
+      if (currentCardId) {
+        const tCardId = t.creditCard?.id || t.cardId;
+        if (tCardId !== currentCardId) return false;
+      }
+
+      // 3. Filtro por DONO
+      // Se houver um dono selecionado, filtramos por ele
       if (currentOwnerId) {
         const tOwnerId = t.owner?.id || t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
@@ -218,7 +203,7 @@ export class AppComponent {
     }
 
     const startDate = new Date(startYear, startMonth, card.closingDay);
-    const endDate = new Date(endYear, endMonth, card.closingDay);
+    const endDate = new Date(endYear, endMonth, 0);
 
     return {
       cardName: card.name,
@@ -524,6 +509,7 @@ export class AppComponent {
 
     this.selectedMonth.set(m);
     this.selectedYear.set(y);
+    this.financeService.loadByMonth(m, y);
   }
 
   // --- Helpers ---

@@ -1,7 +1,7 @@
 
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { tap, forkJoin, map, Observable, catchError, throwError } from 'rxjs';
+import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
 
 // --- DATA MODELS ---
 
@@ -39,6 +39,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   purchaseDate: string;
+  billingDate: string;
 
   // Objetos completos vindos do Java (JPA)
   category: Category;
@@ -62,10 +63,14 @@ export interface Transaction {
 })
 export class FinanceService {
   private http: HttpClient = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:8080/transactions';
-  private readonly API_URL_CATEGORIES = 'http://localhost:8080/categories';
-  private readonly API_URL_OWNERS = 'http://localhost:8080/owners';
-  private readonly API_URL_CARDS = 'http://localhost:8080/cards';
+  private readonly API_URL = 'http://192.168.1.33:8080/transactions';
+  private readonly API_URL_CATEGORIES = 'http://192.168.1.33:8080/categories';
+  private readonly API_URL_OWNERS = 'http://192.168.1.33:8080/owners';
+  private readonly API_URL_CARDS = 'http://192.168.1.33:8080/cards';
+
+  // --- CONTROLE DE ESTADO DO FILTRO ---
+  private lastViewedMonth = new Date().getMonth(); //
+  private lastViewedYear = new Date().getFullYear(); //
 
   // --- STATE ---
 
@@ -90,7 +95,10 @@ export class FinanceService {
     this.loadCategories(); // Load Categories from API
     this.loadOwners(); // Load Owners from API
     this.loadCards(); // Load Cards from API
-    this.loadAll(); // Load Transactions from API
+
+    // Substitua o loadAll() por este para carregar o mês atual na inicialização:
+    this.loadByMonth(this.lastViewedMonth, this.lastViewedYear);
+    //this.loadAll(); // Load Transactions from API
 
     // Auto-save effects (Only for non-backend entities)
     effect(() => localStorage.setItem('fincontrol_settings_v2', JSON.stringify(this.settings())));
@@ -219,11 +227,12 @@ export class FinanceService {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
         const mappedData: Transaction[] = data.map(t => {
-          const dateObj = new Date(t.purchaseDate);
+          // IMPORTANTE: Para o Dashboard, usamos o billingDate que vem do Java
+          // Usamos UTC para evitar que fusos horários mudem o dia 01 para 31
+          const dateRef = new Date(t.billingDate);
 
           return {
             ...t,
-            // Convert Java Enum (INCOME) to Frontend (income)
             type: t.type.toLowerCase() as TransactionType,
 
             // Mapeamento de IDs para compatibilidade com os filtros do Componente
@@ -231,9 +240,9 @@ export class FinanceService {
             ownerId: t.owner?.id,
             cardId: t.creditCard?.id || null,
 
-            // Calculate effective dates for UI filtering
-            effectiveMonth: dateObj.getMonth(),
-            effectiveYear: dateObj.getFullYear(),
+            // O Dashboard agora filtra pela data de faturamento correta
+            effectiveMonth: dateRef.getUTCMonth(),
+            effectiveYear: dateRef.getUTCFullYear(),
             installmentCurrent: 1,
             installmentTotal: 1
           };
@@ -241,6 +250,32 @@ export class FinanceService {
         this._transactions.set(mappedData);
       },
       error: (err) => console.error('Failed to load transactions from API', err)
+    });
+  }
+
+  loadByMonth(month: number, year: number) {
+    this.lastViewedMonth = month;
+    this.lastViewedYear = year;
+    const javaMonth = month + 1; // JS 0-11 -> Java 1-12
+    this.http.get<any[]>(`${this.API_URL}/filter`, {
+      params: { month: javaMonth.toString(), year: year.toString() }
+    }).subscribe({
+      next: (data) => {
+        const mappedData: Transaction[] = data.map(t => {
+          const dateRef = new Date(t.billingDate);
+          return {
+            ...t,
+            type: t.type.toLowerCase() as TransactionType,
+            categoryId: t.category?.id,
+            ownerId: t.owner?.id,
+            cardId: t.creditCard?.id || null,
+            effectiveMonth: dateRef.getUTCMonth(),
+            effectiveYear: dateRef.getUTCFullYear(),
+          };
+        });
+        this._transactions.set(mappedData);
+      },
+      error: (err) => console.error('Erro ao filtrar:', err)
     });
   }
 
@@ -260,42 +295,26 @@ export class FinanceService {
     const month = parseInt(mStr) - 1;
     const day = parseInt(dStr);
 
-    let startMonth = month;
-    let startYear = year;
-
-    // 2. Credit Card Logic (Frontend Calc)
-    if (type === 'expense' && cardId) {
-      const card = this.cards().find(c => c.id === cardId);
-      if (card && day >= card.closingDay) {
-        startMonth++;
-      }
-    }
-
     const totalInstallments = (type === 'expense' && cardId) ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
-
-    // Gera o groupId
-
     const groupId = totalInstallments > 1 ? crypto.randomUUID() : null;
 
-    // Create an array of Observables for each installment
     const requests: Observable<any>[] = [];
 
     for (let i = 0; i < totalInstallments; i++) {
-      // 3. A Lógica de Ouro para o dia da parcela
-      // Descobre o último dia do mês da parcela atual (usando o truque do dia 0)
-      const lastDayOfMonth = new Date(startYear, startMonth + i + 1, 0).getDate();
+      const lastDayOfMonth = new Date(year, month + i + 1, 0).getDate();
 
       // Escolhe o dia original ou o limite do mês (o que for menor)
       const finalDay = Math.min(day, lastDayOfMonth);
 
       // Cria a data final da parcela
-      const effectiveDate = new Date(startYear, startMonth + i, finalDay);
+      const effectiveDate = new Date(year, month + i, finalDay);
 
       // 4. Formata para o Backend (YYYY-MM-DDT00:00:00)
       const y = effectiveDate.getFullYear();
       const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
       const d = String(effectiveDate.getDate()).padStart(2, '0');
+      // Formata como ISO para o LocalDateTime do Java
       const formattedDate = `${y}-${m}-${d}T12:00:00Z`
 
       // Construct Backend Payload
@@ -318,13 +337,19 @@ export class FinanceService {
 
     // Execute all POSTs and refresh list
     return forkJoin(requests).pipe(
-      tap(() => this.loadAll())
-    );
+      delay(150),
+      tap(() => {
+        // REFRESH: Usa a memória do que está na tela (lastViewedMonth/Year)
+        // Se você estava vendo Dezembro, ele recarrega Dezembro. 
+        // A compra de cartão sumirá de Dezembro (correto) e aparecerá quando você mudar para Janeiro.
+        this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)
+      }));
   }
 
   deleteTransaction(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`).pipe(
-      tap(() => this.loadAll())
+      // Recarrega o mês que o usuário estava vendo antes de excluir
+      tap(() => { this.loadByMonth(this.lastViewedMonth, this.lastViewedYear) })
     );
   }
 
@@ -332,7 +357,7 @@ export class FinanceService {
     // Backend doesn't have bulk delete, map to single deletes
     const requests = ids.map(id => this.http.delete(`${this.API_URL}/${id}`));
     return forkJoin(requests).pipe(
-      tap(() => this.loadAll())
+      tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear))
     );
   }
 
@@ -345,7 +370,7 @@ export class FinanceService {
     }
 
     return this.http.patch(`${this.API_URL}/${id}`, payload).pipe(
-      tap(() => this.loadAll()), // Recarrega a lista após o sucesso
+      tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)), // Recarrega a lista após o sucesso
       catchError(err => {
         console.error('Erro ao atualizar:', err);
         return throwError(() => new Error('Falha ao atualizar transação.'));
