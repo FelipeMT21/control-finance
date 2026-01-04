@@ -336,33 +336,16 @@ export class FinanceService {
     }
 
     return forkJoin(requests);
-
-    // Execute all POSTs and refresh list
-    // return forkJoin(requests).pipe(
-    //   delay(150),
-    //   tap(() => {
-    //     // REFRESH: Usa a memória do que está na tela (lastViewedMonth/Year)
-    //     // Se você estava vendo Dezembro, ele recarrega Dezembro. 
-    //     // A compra de cartão sumirá de Dezembro (correto) e aparecerá quando você mudar para Janeiro.
-    //     this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)
-    //   }));
   }
 
   deleteTransaction(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
-    // return this.http.delete(`${this.API_URL}/${id}`).pipe(
-    //   // Recarrega o mês que o usuário estava vendo antes de excluir
-    //   tap(() => { this.loadByMonth(this.lastViewedMonth, this.lastViewedYear) })
-    // );
   }
 
   deleteTransactionsBulk(ids: string[]): Observable<any> {
     // Backend doesn't have bulk delete, map to single deletes
     const requests = ids.map(id => this.http.delete(`${this.API_URL}/${id}`));
     return forkJoin(requests);
-    // return forkJoin(requests).pipe(
-    //   tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear))
-    // );
   }
 
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {

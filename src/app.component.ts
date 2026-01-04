@@ -266,14 +266,17 @@ export class AppComponent {
 
   // --- CRUD & Batch Logic ---
 
-  initiateDelete(transaction: Transaction) {
+initiateDelete(transaction: Transaction) {
     if (transaction.groupId) {
       this.pendingAction.set({ type: 'delete', transaction });
       this.activeModal.set('batch-confirm');
     } else {
       if (confirm('Excluir esta movimentação?')) {
         this.financeService.deleteTransaction(transaction.id).subscribe({
-          next: () => this.closeModal(),
+          next: () => {
+            this.closeModal();
+            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          },
           error: (err) => alert('Erro ao excluir: ' + err.message)
         });
       }
@@ -374,19 +377,22 @@ export class AppComponent {
       };
 
       if (!scope || scope === 'single') {
-        // Edição Simples (Um item)
+        // Single Update
         this.financeService.updateTransaction(editId, updatePayload).subscribe({
-          next: () => this.closeModal(),
+          next: () => {
+            this.closeModal();
+            // ADICIONADO: Recarrega a tela após editar item único
+            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          },
           error: (err) => alert('Erro ao atualizar: ' + err.message)
         });
       } else {
-        // --- BATCH UPDATE LOGIC (CORRIGIDA) ---
+        // --- BATCH UPDATE LOGIC ---
         const original = this.financeService.transactions().find(t => t.id === editId);
-
+        
         if (original && original.groupId) {
-          // MUDANÇA: Buscamos todas as parcelas do servidor (mesmo as de outros meses)
           this.financeService.fetchGroup(original.groupId).subscribe(groupTransactions => {
-
+            
             const currentIndex = groupTransactions.findIndex(t => t.id === original.id);
             let targetTransactions: Transaction[] = [];
 
@@ -394,19 +400,14 @@ export class AppComponent {
             else if (scope === 'future') targetTransactions = groupTransactions.slice(currentIndex);
             else if (scope === 'past') targetTransactions = groupTransactions.slice(0, currentIndex + 1);
 
-            // Prepara as requisições
             const requests = targetTransactions.map(t => {
               const batchPayload = { ...updatePayload };
-
-              // Preserva dados originais de data e descrição numerada
-              batchPayload.purchaseDate = t.purchaseDate;
-              batchPayload.description = t.description;
-              batchPayload.amount = val.amount;
-
+              batchPayload.purchaseDate = t.purchaseDate; 
+              batchPayload.description = t.description;   
+              batchPayload.amount = val.amount; 
               return this.financeService.updateTransaction(t.id, batchPayload);
             });
 
-            // Executa tudo e espera terminar
             forkJoin(requests).subscribe({
               next: () => {
                 this.closeModal();
@@ -432,7 +433,11 @@ export class AppComponent {
         usingCard ? val.cardId : null,
         numInstallments
       ).subscribe({
-        next: () => this.closeModal(),
+        next: () => {
+          this.closeModal();
+          // ADICIONADO: Recarrega a tela após criar nova transação
+          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+        },
         error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
       });
     }
