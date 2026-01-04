@@ -295,7 +295,7 @@ export class FinanceService {
     const month = parseInt(mStr) - 1;
     const day = parseInt(dStr);
 
-    const totalInstallments = (type === 'expense' && cardId) ? (installments > 0 ? installments : 1) : 1;
+    const totalInstallments = (type === 'expense') ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
     const groupId = totalInstallments > 1 ? crypto.randomUUID() : null;
 
@@ -335,30 +335,34 @@ export class FinanceService {
       requests.push(this.http.post(this.API_URL, payload));
     }
 
+    return forkJoin(requests);
+
     // Execute all POSTs and refresh list
-    return forkJoin(requests).pipe(
-      delay(150),
-      tap(() => {
-        // REFRESH: Usa a memória do que está na tela (lastViewedMonth/Year)
-        // Se você estava vendo Dezembro, ele recarrega Dezembro. 
-        // A compra de cartão sumirá de Dezembro (correto) e aparecerá quando você mudar para Janeiro.
-        this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)
-      }));
+    // return forkJoin(requests).pipe(
+    //   delay(150),
+    //   tap(() => {
+    //     // REFRESH: Usa a memória do que está na tela (lastViewedMonth/Year)
+    //     // Se você estava vendo Dezembro, ele recarrega Dezembro. 
+    //     // A compra de cartão sumirá de Dezembro (correto) e aparecerá quando você mudar para Janeiro.
+    //     this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)
+    //   }));
   }
 
   deleteTransaction(id: string): Observable<any> {
-    return this.http.delete(`${this.API_URL}/${id}`).pipe(
-      // Recarrega o mês que o usuário estava vendo antes de excluir
-      tap(() => { this.loadByMonth(this.lastViewedMonth, this.lastViewedYear) })
-    );
+    return this.http.delete(`${this.API_URL}/${id}`);
+    // return this.http.delete(`${this.API_URL}/${id}`).pipe(
+    //   // Recarrega o mês que o usuário estava vendo antes de excluir
+    //   tap(() => { this.loadByMonth(this.lastViewedMonth, this.lastViewedYear) })
+    // );
   }
 
   deleteTransactionsBulk(ids: string[]): Observable<any> {
     // Backend doesn't have bulk delete, map to single deletes
     const requests = ids.map(id => this.http.delete(`${this.API_URL}/${id}`));
-    return forkJoin(requests).pipe(
-      tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear))
-    );
+    return forkJoin(requests);
+    // return forkJoin(requests).pipe(
+    //   tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear))
+    // );
   }
 
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
@@ -370,7 +374,7 @@ export class FinanceService {
     }
 
     return this.http.patch(`${this.API_URL}/${id}`, payload).pipe(
-      tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)), // Recarrega a lista após o sucesso
+      // tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)), // Recarrega a lista após o sucesso
       catchError(err => {
         console.error('Erro ao atualizar:', err);
         return throwError(() => new Error('Falha ao atualizar transação.'));
@@ -393,6 +397,34 @@ export class FinanceService {
   getGroupTransactions(groupId: string) {
     // Grouping depends on Frontend persistence which is limited with current Backend
     return this.transactions().filter(t => t.groupId === groupId).sort((a, b) => (a.installmentCurrent || 0) - (b.installmentCurrent || 0));
+  }
+
+  // --- ADICIONE ISTO NO SEU FINANCE.SERVICE.TS ---
+  
+  // Função auxiliar para buscar o grupo COMPLETO no servidor
+  fetchGroup(groupId: string): Observable<Transaction[]> {
+    // Como seu backend não tem um endpoint específico "/group/:id", 
+    // vamos buscar tudo e filtrar (Solução temporária mas funcional)
+    return this.http.get<any[]>(this.API_URL).pipe(
+      map(data => {
+        return data
+          .filter(t => t.groupId === groupId) // Filtra pelo ID do grupo
+          .map(t => {
+            // Mapeia igual ao loadAll para garantir compatibilidade
+            const dateRef = new Date(t.billingDate || t.purchaseDate); 
+            return {
+              ...t,
+              type: t.type.toLowerCase() as TransactionType,
+              categoryId: t.category?.id,
+              ownerId: t.owner?.id,
+              cardId: t.creditCard?.id || null,
+              effectiveMonth: dateRef.getUTCMonth(),
+              effectiveYear: dateRef.getUTCFullYear(),
+            } as Transaction;
+          })
+          .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
+      })
+    );
   }
 
   getCategory(idOrName: string) {

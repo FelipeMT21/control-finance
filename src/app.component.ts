@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { FinanceService, Transaction, CreditCard, Owner } from './services/finance.service';
 import { ChartComponent, ChartData } from './components/chart.component';
+import { forkJoin } from 'rxjs';
 
 type BatchActionType = 'delete' | 'edit';
 type BatchScope = 'single' | 'all' | 'future' | 'past';
@@ -203,13 +204,13 @@ export class AppComponent {
     }
 
     const startDate = new Date(startYear, startMonth, card.closingDay);
-    const endDate = new Date(endYear, endMonth, 0);
+    const endDate = new Date(endYear, endMonth, card.closingDay - 1);
 
     return {
       cardName: card.name,
       ownerName: this.financeService.getOwner(card.owner.id)?.name,
-      closingDate: `${card.closingDay}/${this.selectedMonth() + 1}`,
-      dueDate: `${card.dueDay}/${this.selectedMonth() + 1}`,
+      closingDate: `${card.closingDay}/${endMonth + 1}`,
+      dueDate: `${card.dueDay}/${endMonth + 1}`,
       periodStart: startDate,
       periodEnd: endDate,
       status: this.today > endDate ? 'Fechada' : 'Aberta',
@@ -295,32 +296,54 @@ export class AppComponent {
     const action = this.pendingAction();
     if (!action) return;
 
-    // IF DELETE: Execute immediately
+    // --- LÓGICA DE EXCLUSÃO (DELETE) ---
     if (action.type === 'delete') {
       const groupId = action.transaction.groupId!;
-      const groupTransactions = this.financeService.getGroupTransactions(groupId);
-      const currentIdx = action.transaction.installmentCurrent || 1;
-      let targetIds: string[] = [];
 
-      if (scope === 'single') targetIds = [action.transaction.id];
-      else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
-      else if (scope === 'future') targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) >= currentIdx).map(t => t.id);
-      else if (scope === 'past') targetIds = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx).map(t => t.id);
+      this.financeService.fetchGroup(groupId).subscribe(groupTransactions => {
 
-      this.financeService.deleteTransactionsBulk(targetIds).subscribe({
-        next: () => this.closeModal(),
-        error: (err) => alert('Erro ao excluir em lote: ' + err.message)
+        // 1. Descobre a posição (índice) da transação atual na lista ordenada por data
+        const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
+
+        // Se por algum milagre não achar, previne erro
+        if (currentIndex === -1) {
+          this.closeModal();
+          return;
+        }
+
+        let targetIds: string[] = [];
+
+        if (scope === 'single') {
+          targetIds = [action.transaction.id];
+        }
+        else if (scope === 'all') {
+          targetIds = groupTransactions.map(t => t.id);
+        }
+        else if (scope === 'future') {
+          // Pega da posição atual até o fim da lista
+          targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
+        }
+        else if (scope === 'past') {
+          // Pega do início da lista até a posição atual
+          targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
+        }
+
+        this.financeService.deleteTransactionsBulk(targetIds).subscribe({
+          next: () => {
+            this.closeModal();
+            // Atualiza a tela
+            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          },
+          error: (err) => alert('Erro ao excluir em lote: ' + err.message)
+        });
       });
       return;
     }
 
-    // IF EDIT: Just set the scope and Open the Form
+    // --- LÓGICA DE EDIÇÃO (Manteve igual, apenas redireciona) ---
     if (action.type === 'edit') {
       this.batchEditScope.set(scope);
-      this.activeModal.set(null); // Close batch modal
-
-      // Slight timeout to allow modal animation to clear or just switch immediately
-      // We switch to transaction modal
+      this.activeModal.set(null);
       setTimeout(() => {
         this.openModal('transaction', action.transaction);
       }, 50);
@@ -351,42 +374,54 @@ export class AppComponent {
       };
 
       if (!scope || scope === 'single') {
-        // Single Update
+        // Edição Simples (Um item)
         this.financeService.updateTransaction(editId, updatePayload).subscribe({
           next: () => this.closeModal(),
           error: (err) => alert('Erro ao atualizar: ' + err.message)
         });
       } else {
-        // Batch Update logic
+        // --- BATCH UPDATE LOGIC (CORRIGIDA) ---
         const original = this.financeService.transactions().find(t => t.id === editId);
+
         if (original && original.groupId) {
-          const groupTransactions = this.financeService.getGroupTransactions(original.groupId);
-          const currentIdx = original.installmentCurrent || 1;
-          let targetTransactions: Transaction[] = [];
+          // MUDANÇA: Buscamos todas as parcelas do servidor (mesmo as de outros meses)
+          this.financeService.fetchGroup(original.groupId).subscribe(groupTransactions => {
 
-          if (scope === 'all') targetTransactions = groupTransactions;
-          else if (scope === 'future') targetTransactions = groupTransactions.filter(t => (t.installmentCurrent || 0) >= currentIdx);
-          else if (scope === 'past') targetTransactions = groupTransactions.filter(t => (t.installmentCurrent || 0) <= currentIdx);
+            const currentIndex = groupTransactions.findIndex(t => t.id === original.id);
+            let targetTransactions: Transaction[] = [];
 
-          // We need to update multiple items. Ideally backend handles this.
-          targetTransactions.forEach(t => {
-            const batchPayload = { ...updatePayload };
+            if (scope === 'all') targetTransactions = groupTransactions;
+            else if (scope === 'future') targetTransactions = groupTransactions.slice(currentIndex);
+            else if (scope === 'past') targetTransactions = groupTransactions.slice(0, currentIndex + 1);
 
-            // Restore specific fields we shouldn't overwrite in batch unless intended
-            batchPayload.purchaseDate = t.purchaseDate; // Keep original date
-            batchPayload.description = t.description;   // Keep original desc (with index)
-            batchPayload.amount = val.amount;
+            // Prepara as requisições
+            const requests = targetTransactions.map(t => {
+              const batchPayload = { ...updatePayload };
 
-            this.financeService.updateTransaction(t.id, batchPayload).subscribe();
+              // Preserva dados originais de data e descrição numerada
+              batchPayload.purchaseDate = t.purchaseDate;
+              batchPayload.description = t.description;
+              batchPayload.amount = val.amount;
+
+              return this.financeService.updateTransaction(t.id, batchPayload);
+            });
+
+            // Executa tudo e espera terminar
+            forkJoin(requests).subscribe({
+              next: () => {
+                this.closeModal();
+                this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+              },
+              error: (err) => alert('Erro ao atualizar em lote: ' + err.message)
+            });
           });
-
-          // Close modal after triggering updates (optimistic UI)
-          this.closeModal();
         }
       }
 
     } else {
       // --- CREATE LOGIC ---
+      const numInstallments = isExpense ? Number(val.installments) : 1;
+
       this.financeService.addTransaction(
         val.description,
         val.amount,
@@ -395,7 +430,7 @@ export class AppComponent {
         val.categoryId,
         val.ownerId,
         usingCard ? val.cardId : null,
-        usingCard ? val.installments : 1
+        numInstallments
       ).subscribe({
         next: () => this.closeModal(),
         error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
