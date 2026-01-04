@@ -1,5 +1,4 @@
-
-import { Component, ElementRef, computed, effect, input, viewChild } from '@angular/core';
+import { Component, ElementRef, input, viewChild, effect } from '@angular/core';
 import * as d3 from 'd3';
 
 export interface ChartData {
@@ -12,7 +11,7 @@ export interface ChartData {
   selector: 'app-chart',
   standalone: true,
   template: `
-    <div #chartContainer class="w-full h-full flex items-center justify-center"></div>
+    <div #chartContainer class="relative w-full h-full flex items-center justify-center"></div>
   `
 })
 export class ChartComponent {
@@ -29,6 +28,7 @@ export class ChartComponent {
       
       if (!el) return;
       
+      // Limpa tudo antes de desenhar
       d3.select(el).selectAll('*').remove();
       
       // Check if we actually have positive values to show
@@ -47,18 +47,25 @@ export class ChartComponent {
         return;
       }
 
+      // 1. Cria o elemento do Tooltip (Escondido inicialmente)
+      const tooltip = d3.select(el)
+        .append('div')
+        .attr('class', 'absolute z-50 pointer-events-none opacity-0 transition-opacity duration-200 bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-900 px-3 py-2 rounded-lg shadow-xl text-xs backdrop-blur-sm')
+        .style('top', '0')
+        .style('left', '0');
+
       const width = el.clientWidth || 300;
       const height = el.clientHeight || 200;
 
       if (type === 'donut') {
-        this.renderDonut(el, data, width, height);
+        this.renderDonut(el, data, width, height, tooltip);
       } else {
-        this.renderBar(el, data, width, height);
+        this.renderBar(el, data, width, height, tooltip);
       }
     });
   }
 
-  private renderDonut(el: HTMLElement, data: ChartData[], width: number, height: number) {
+  private renderDonut(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: any) {
     const radius = Math.min(width, height) / 2;
     const svg = d3.select(el)
       .append('svg')
@@ -75,6 +82,11 @@ export class ChartComponent {
       .innerRadius(radius * 0.6)
       .outerRadius(radius - 10);
 
+    // Hover Arc (levemente maior para dar efeito de zoom)
+    const arcHover = d3.arc<d3.PieArcDatum<ChartData>>()
+      .innerRadius(radius * 0.6)
+      .outerRadius(radius - 5);
+
     const paths = svg.selectAll('path')
       .data(pie(data))
       .enter()
@@ -82,26 +94,61 @@ export class ChartComponent {
       .attr('d', arc)
       .attr('fill', d => d.data.color)
       .attr('stroke', 'currentColor')
-      .attr('class', 'stroke-white dark:stroke-slate-800')
+      .attr('class', 'stroke-white dark:stroke-slate-800 transition-all duration-300 cursor-pointer')
       .style('stroke-width', '2px')
       .style('opacity', 0.8);
+
+    // --- Lógica de Interação (Tooltip) ---
+    paths
+      .on('mouseover', function(event, d) {
+        // Efeito visual na fatia
+        d3.select(this)
+          .transition().duration(200)
+          .style('opacity', 1)
+          .attr('d', arcHover); // Aumenta um pouco a fatia
+        
+        // Mostrar tooltip
+        tooltip.style('opacity', 1);
+        tooltip.html(`
+          <div class="font-bold mb-0.5">${d.data.label}</div>
+          <div class="font-mono opacity-90">R$ ${d.data.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        `);
+      })
+      .on('mousemove', function(event) {
+        // Mover tooltip com o mouse (calcula posição relativa ao container)
+        const [x, y] = d3.pointer(event, el);
+        // Adiciona um offset para o mouse não cobrir o texto
+        tooltip
+          .style('left', `${x + 15}px`)
+          .style('top', `${y + 15}px`);
+      })
+      .on('mouseleave', function(event, d) {
+        // Resetar fatia
+        d3.select(this)
+          .transition().duration(200)
+          .style('opacity', 0.8)
+          .attr('d', arc); // Volta ao tamanho normal
+        
+        // Esconder tooltip
+        tooltip.style('opacity', 0);
+      });
       
     // Add center text
     const total = data.reduce((acc, d) => acc + d.value, 0);
     svg.append("text")
        .attr("text-anchor", "middle")
        .attr("dy", "-0.2em")
-       .attr("class", "text-sm font-bold fill-gray-500 dark:fill-gray-400")
+       .attr("class", "text-sm font-bold fill-gray-500 dark:fill-gray-400 pointer-events-none")
        .text("Total");
        
     svg.append("text")
        .attr("text-anchor", "middle")
        .attr("dy", "1.2em")
-       .attr("class", "text-sm font-bold fill-gray-800 dark:fill-gray-100")
+       .attr("class", "text-sm font-bold fill-gray-800 dark:fill-gray-100 pointer-events-none")
        .text(`R$ ${Math.round(total)}`);
   }
 
-  private renderBar(el: HTMLElement, data: ChartData[], width: number, height: number) {
+  private renderBar(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: any) {
     const margin = {top: 20, right: 20, bottom: 30, left: 50};
     const w = width - margin.left - margin.right;
     const h = height - margin.top - margin.bottom;
@@ -123,7 +170,6 @@ export class ChartComponent {
       .attr("transform", `translate(0,${h})`)
       .call(d3.axisBottom(x));
     
-    // Apply Tailwind classes to axis text
     xAxis.selectAll("text")
       .style("text-anchor", "middle")
       .attr("class", "fill-slate-500 dark:fill-slate-400 text-xs");
@@ -133,7 +179,6 @@ export class ChartComponent {
 
     // Y Axis
     const maxVal = d3.max(data, d => d.value) || 0;
-    // Safety check: ensure domain max is at least 1 to avoid D3 scale collapse on [0,0]
     const y = d3.scaleLinear()
       .domain([0, maxVal || 1])
       .range([h, 0]);
@@ -156,6 +201,28 @@ export class ChartComponent {
         .attr("width", x.bandwidth())
         .attr("height", d => h - y(d.value))
         .attr("fill", d => d.color)
-        .attr("rx", 4);
+        .attr("rx", 4)
+        .attr("class", "transition-opacity duration-200 cursor-pointer")
+        .style("opacity", 0.8) // Opacidade inicial
+        // --- Interação Tooltip Barras ---
+        .on('mouseover', function(event, d) {
+          d3.select(this).style("opacity", 1); // Highlight
+          
+          tooltip.style('opacity', 1);
+          tooltip.html(`
+            <div class="font-bold mb-0.5">${d.label}</div>
+            <div class="font-mono opacity-90">R$ ${d.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          `);
+        })
+        .on('mousemove', function(event) {
+          const [x, y] = d3.pointer(event, el);
+          tooltip
+            .style('left', `${x + 15}px`)
+            .style('top', `${y + 15}px`);
+        })
+        .on('mouseleave', function() {
+          d3.select(this).style("opacity", 0.8); // Reset highlight
+          tooltip.style('opacity', 0);
+        });
   }
 }
