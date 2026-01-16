@@ -1,24 +1,61 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# ------------------------------------------------------------------
+# DEPENDÊNCIAS
+# ------------------------------------------------------------------
+/node_modules
+/npm-debug.log
+/yarn-error.log
+/pnpm-debug.log*
+/lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ------------------------------------------------------------------
+# ANGULAR - BUILD & CACHE
+# ------------------------------------------------------------------
+/.angular/
+/dist/
+/dist-ssr/
+/tmp/
+/out-tsc/
+/bazel-out/
+/test-results/
 
-# Editor directories and files
-.vscode/*
+# ------------------------------------------------------------------
+# IDEs & EDITORES
+# ------------------------------------------------------------------
+.vscode/
 !.vscode/extensions.json
-.idea
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ------------------------------------------------------------------
+# SISTEMA OPERACIONAL & ARQUIVOS TEMPORÁRIOS
+# ------------------------------------------------------------------
 .DS_Store
+Thumbs.db
+*.swp
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.local
+
+# ------------------------------------------------------------------
+# SEGURANÇA (Importante!)
+# ------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+# Ignora arquivos de ambiente que podem conter chaves de API
+src/environments/environment.ts
+# (Mantenha o environment.development.ts se não tiver senhas reais)
+
+# ------------------------------------------------------------------
+# TESTES & RELATÓRIOS
+# ------------------------------------------------------------------
+/coverage
+/reports
+/.sass-cache/
+/connect.lock
