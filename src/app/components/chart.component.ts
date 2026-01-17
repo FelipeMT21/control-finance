@@ -24,14 +24,13 @@ export class ChartComponent {
     effect(() => {
       const data = this.data();
       const type = this.type();
-      const el = this.chartContainer().nativeElement;
+      const container = this.chartContainer();
       
-      if (!el) return;
+      if (!container) return;
+      const el = container.nativeElement;
       
-      // Limpa tudo antes de desenhar
       d3.select(el).selectAll('*').remove();
       
-      // Check if we actually have positive values to show
       const hasData = data.some(d => d.value > 0);
 
       if (data.length === 0 || !hasData) {
@@ -47,7 +46,6 @@ export class ChartComponent {
         return;
       }
 
-      // 1. Cria o elemento do Tooltip (Escondido inicialmente)
       const tooltip = d3.select(el)
         .append('div')
         .attr('class', 'absolute z-50 pointer-events-none opacity-0 transition-opacity duration-200 bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-900 px-3 py-2 rounded-lg shadow-xl text-xs backdrop-blur-sm')
@@ -65,7 +63,7 @@ export class ChartComponent {
     });
   }
 
-  private renderDonut(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: any) {
+  private renderDonut(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: d3.Selection<HTMLDivElement, unknown, null, undefined>) {
     const radius = Math.min(width, height) / 2;
     const svg = d3.select(el)
       .append('svg')
@@ -82,7 +80,6 @@ export class ChartComponent {
       .innerRadius(radius * 0.6)
       .outerRadius(radius - 10);
 
-    // Hover Arc (levemente maior para dar efeito de zoom)
     const arcHover = d3.arc<d3.PieArcDatum<ChartData>>()
       .innerRadius(radius * 0.6)
       .outerRadius(radius - 5);
@@ -91,64 +88,56 @@ export class ChartComponent {
       .data(pie(data))
       .enter()
       .append('path')
-      .attr('d', arc)
+      .attr('d', arc as any)
       .attr('fill', d => d.data.color)
       .attr('stroke', 'currentColor')
       .attr('class', 'stroke-white dark:stroke-slate-800 transition-all duration-300 cursor-pointer')
       .style('stroke-width', '2px')
       .style('opacity', 0.8);
 
-    // --- Lógica de Interação (Tooltip) ---
     paths
-      .on('mouseover', function(event, d) {
-        // Efeito visual na fatia
+      .on('mouseover', function(this: any, event: any, d: d3.PieArcDatum<ChartData>) {
         d3.select(this)
           .transition().duration(200)
           .style('opacity', 1)
-          .attr('d', arcHover); // Aumenta um pouco a fatia
+          .attr('d', arcHover as any);
         
-        // Mostrar tooltip
         tooltip.style('opacity', 1);
         tooltip.html(`
           <div class="font-bold mb-0.5">${d.data.label}</div>
           <div class="font-mono opacity-90">R$ ${d.data.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         `);
       })
-      .on('mousemove', function(event) {
-        // Mover tooltip com o mouse (calcula posição relativa ao container)
+      .on('mousemove', function(event: MouseEvent) {
         const [x, y] = d3.pointer(event, el);
-        // Adiciona um offset para o mouse não cobrir o texto
         tooltip
           .style('left', `${x + 15}px`)
           .style('top', `${y + 15}px`);
       })
-      .on('mouseleave', function(event, d) {
-        // Resetar fatia
+      .on('mouseleave', function(this: any) {
         d3.select(this)
           .transition().duration(200)
           .style('opacity', 0.8)
-          .attr('d', arc); // Volta ao tamanho normal
+          .attr('d', arc as any);
         
-        // Esconder tooltip
         tooltip.style('opacity', 0);
       });
       
-    // Add center text
     const total = data.reduce((acc, d) => acc + d.value, 0);
     svg.append("text")
-       .attr("text-anchor", "middle")
-       .attr("dy", "-0.2em")
-       .attr("class", "text-sm font-bold fill-gray-500 dark:fill-gray-400 pointer-events-none")
-       .text("Total");
-       
+        .attr("text-anchor", "middle")
+        .attr("dy", "-0.2em")
+        .attr("class", "text-sm font-bold fill-gray-500 dark:fill-gray-400 pointer-events-none")
+        .text("Total");
+        
     svg.append("text")
-       .attr("text-anchor", "middle")
-       .attr("dy", "1.2em")
-       .attr("class", "text-sm font-bold fill-gray-800 dark:fill-gray-100 pointer-events-none")
-       .text(`R$ ${Math.round(total)}`);
+        .attr("text-anchor", "middle")
+        .attr("dy", "1.2em")
+        .attr("class", "text-sm font-bold fill-gray-800 dark:fill-gray-100 pointer-events-none")
+        .text(`R$ ${Math.round(total)}`);
   }
 
-  private renderBar(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: any) {
+  private renderBar(el: HTMLElement, data: ChartData[], width: number, height: number, tooltip: d3.Selection<HTMLDivElement, unknown, null, undefined>) {
     const margin = {top: 20, right: 20, bottom: 30, left: 50};
     const w = width - margin.left - margin.right;
     const h = height - margin.top - margin.bottom;
@@ -160,7 +149,6 @@ export class ChartComponent {
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // X Axis
     const x = d3.scaleBand()
       .range([0, w])
       .domain(data.map(d => d.label))
@@ -171,13 +159,11 @@ export class ChartComponent {
       .call(d3.axisBottom(x));
     
     xAxis.selectAll("text")
-      .style("text-anchor", "middle")
       .attr("class", "fill-slate-500 dark:fill-slate-400 text-xs");
     
     xAxis.selectAll("path, line")
        .attr("class", "stroke-slate-200 dark:stroke-slate-600");
 
-    // Y Axis
     const maxVal = d3.max(data, d => d.value) || 0;
     const y = d3.scaleLinear()
       .domain([0, maxVal || 1])
@@ -192,8 +178,7 @@ export class ChartComponent {
     yAxis.selectAll("path, line")
        .attr("class", "stroke-slate-200 dark:stroke-slate-600");
 
-    // Bars
-    svg.selectAll("mybar")
+    svg.selectAll("rect")
       .data(data)
       .join("rect")
         .attr("x", d => x(d.label)!)
@@ -203,25 +188,23 @@ export class ChartComponent {
         .attr("fill", d => d.color)
         .attr("rx", 4)
         .attr("class", "transition-opacity duration-200 cursor-pointer")
-        .style("opacity", 0.8) // Opacidade inicial
-        // --- Interação Tooltip Barras ---
-        .on('mouseover', function(event, d) {
-          d3.select(this).style("opacity", 1); // Highlight
-          
+        .style("opacity", 0.8)
+        .on('mouseover', function(this: any, event: any, d: ChartData) {
+          d3.select(this).style("opacity", 1);
           tooltip.style('opacity', 1);
           tooltip.html(`
             <div class="font-bold mb-0.5">${d.label}</div>
             <div class="font-mono opacity-90">R$ ${d.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           `);
         })
-        .on('mousemove', function(event) {
-          const [x, y] = d3.pointer(event, el);
+        .on('mousemove', function(event: MouseEvent) {
+          const [px, py] = d3.pointer(event, el);
           tooltip
-            .style('left', `${x + 15}px`)
-            .style('top', `${y + 15}px`);
+            .style('left', `${px + 15}px`)
+            .style('top', `${py + 15}px`);
         })
-        .on('mouseleave', function() {
-          d3.select(this).style("opacity", 0.8); // Reset highlight
+        .on('mouseleave', function(this: any) {
+          d3.select(this).style("opacity", 0.8);
           tooltip.style('opacity', 0);
         });
   }

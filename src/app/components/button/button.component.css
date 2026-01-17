@@ -1,0 +1,10 @@
+button {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+button:not(.is-active):hover {
+  /* A variável --hover-color que será injetada via [style] */
+  background-color: var(--hover-color);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white; /* Texto fica branco para contrastar com a cor do cartão */
+}

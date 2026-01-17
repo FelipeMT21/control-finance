@@ -23,7 +23,7 @@
       <div class="flex items-center gap-2">
         <!-- Dark Mode Toggle -->
         <button (click)="toggleDarkMode()"
-          class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer active:scale-90 group"
           title="Alternar Tema">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
             stroke="currentColor" class="w-6 h-6 hidden dark:block">
@@ -39,10 +39,10 @@
 
         <!-- Settings Button -->
         <button (click)="openModal('settings')"
-          class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          class="group p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer active:scale-90"
           title="Configurações">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-            stroke="currentColor" class="w-6 h-6">
+            stroke="currentColor" class="w-6 h-6 transition-transform duration-500 group-hover:rotate-90">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -50,7 +50,7 @@
         </button>
 
         <button (click)="openModal('transaction')"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95">
+          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-95">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -72,38 +72,30 @@
         <div class="flex flex-col gap-2 w-full lg:w-auto">
           <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
             <!-- Overview Button -->
-            <button (click)="selectOwnerFilter(null)"
-              class="px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all border shadow-sm"
-              [class]="selectedOwnerId() === null ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+            <app-button [isActive]="selectedOwnerId() === null" (clicked)="selectOwnerFilter(null)">
               Visão Geral
-            </button>
+            </app-button>
 
             <!-- Owners Buttons -->
             @for (owner of financeService.owners(); track owner.id) {
-            <button (click)="selectOwnerFilter(owner.id)"
-              class="px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all border shadow-sm flex items-center gap-2"
-              [class]="selectedOwnerId() === owner.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
-              <span>{{ owner.name }}</span>
-            </button>
+            <app-button [isActive]="selectedOwnerId() === owner.id" (clicked)="selectOwnerFilter(owner.id)">
+              {{ owner.name }}
+            </app-button>
             }
           </div>
 
           <!-- LEVEL 2: CARDS (Only visible if specific Owner is selected) -->
           @if (selectedOwnerId()) {
           <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar animate-in fade-in slide-in-from-top-2">
-            <button (click)="selectCardFilter(null)"
-              class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border border-dashed"
-              [class]="selectedCardId() === null ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700' : 'text-slate-500 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            <app-button [isActive]="selectedCardId() === null" class="border-dashed" (clicked)="selectCardFilter(null)">
               Todos os Cartões
-            </button>
+            </app-button>
 
             @for (card of ownerCards(); track card.id) {
-            <button (click)="selectCardFilter(card.id)"
-              class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-2"
-              [class]="selectedCardId() === card.id ? 'text-white border-transparent shadow-sm' : 'bg-transparent text-slate-500 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'"
-              [style.backgroundColor]="selectedCardId() === card.id ? card.color : ''">
+            <app-button [isActive]="selectedCardId() === card.id" [customColor]="card.color"
+              (clicked)="selectCardFilter(card.id!)">
               {{ card.name }}
-            </button>
+            </app-button>
             }
             @if (ownerCards().length === 0) {
             <span class="text-xs text-slate-400 italic py-1.5 px-2">Nenhum cartão vinculado.</span>
@@ -116,7 +108,7 @@
         <div
           class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto ml-auto">
           <button (click)="changeMonth(-1)"
-            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors dark:hover:text-indigo-400 cursor-pointer active:scale-90">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -126,7 +118,7 @@
             class="px-4 font-semibold text-slate-700 dark:text-slate-200 min-w-[140px] text-center select-none whitespace-nowrap">{{
             monthName() }} {{ selectedYear() }}</span>
           <button (click)="changeMonth(1)"
-            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors dark:hover:text-indigo-400 cursor-pointer active:scale-90">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -297,7 +289,7 @@
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                       <div class="w-2 h-8 rounded-full shrink-0"
-                        [style.backgroundColor]="t.type === 'income' ? '#10b981' : getCategoryColor(t.category?.id || t.categoryId)">
+                        [style.backgroundColor]="t.type === 'income' ? '#10b981' : getCategoryColor(t.category.id || t.categoryId)">
                       </div>
                       <div>
                         <div class="font-medium text-slate-900 dark:text-slate-200">{{ t.description }}</div>
@@ -319,7 +311,7 @@
                             {{ t.installmentCurrent }}/{{ t.installmentTotal }}
                           </span>
                           }
-                          <span class="text-slate-400 dark:text-slate-500"> • {{ t.owner?.name ||
+                          <span class="text-slate-400 dark:text-slate-500"> • {{ t.owner.name ||
                             getOwnerName(t.ownerId) }}</span>
                         </div>
                       </div>
@@ -327,9 +319,9 @@
                   </td>
                   <td class="px-4 py-3 hidden sm:table-cell">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      [style.backgroundColor]="(t.category?.color || getCategoryColor(t.categoryId)) + '20'"
-                      [style.color]="t.category?.color || getCategoryColor(t.categoryId)">
-                      {{ t.category?.name || getCategoryName(t.categoryId) }}
+                      [style.backgroundColor]="(t.category.color || getCategoryColor(t.categoryId)) + '20'"
+                      [style.color]="t.category.color || getCategoryColor(t.categoryId)">
+                      {{ t.category.name || getCategoryName(t.categoryId) }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right">
@@ -462,12 +454,12 @@
         <!-- Type Toggle -->
         <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
           <button type="button" (click)="transactionForm.patchValue({type: 'expense'})"
-            class="flex-1 py-2 rounded-md text-sm font-medium transition-all"
+            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
             [class]="transactionForm.get('type')?.value === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Despesa
           </button>
           <button type="button" (click)="transactionForm.patchValue({type: 'income'})"
-            class="flex-1 py-2 rounded-md text-sm font-medium transition-all"
+            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
             [class]="transactionForm.get('type')?.value === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Receita
           </button>
@@ -601,9 +593,9 @@
         }
         <div class="pt-4 flex gap-3">
           <button type="button" (click)="closeModal()"
-            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">Cancelar</button>
+            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors cursor-pointer active:scale-90">Cancelar</button>
           <button type="submit" [disabled]="transactionForm.invalid"
-            class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors">
+            class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer active:scale-90">
             Salvar
           </button>
         </div>
@@ -732,7 +724,7 @@
                   <div class="w-4 h-4 rounded-full shadow-sm" [style.backgroundColor]="cat.color"></div>
                   <span class="font-medium text-slate-700 dark:text-slate-200">{{ cat.name }}</span>
                 </div>
-                <button (click)="financeService.deleteCategory(cat.id)"
+                <button (click)="financeService.deleteCategory(cat.id!)"
                   class="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all p-1">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -824,7 +816,7 @@
                 <div class="flex justify-between items-start relative z-10">
                   <div>
                     <p class="font-bold text-lg tracking-wide drop-shadow-sm">{{ card.name }}</p>
-                    <p class="text-xs opacity-90 uppercase tracking-wider font-medium">{{ card.owner?.name }}</p>
+                    <p class="text-xs opacity-90 uppercase tracking-wider font-medium">{{ card.owner.name }}</p>
                   </div>
                   <div class="flex items-center gap-1">
                     <button (click)="editCard(card)" class="text-white/60 hover:text-white transition-colors p-1"
@@ -835,7 +827,7 @@
                           d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button (click)="financeService.deleteCard(card.id)"
+                    <button (click)="financeService.deleteCard(card.id!)"
                       class="text-white/60 hover:text-white transition-colors p-1" title="Excluir">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">

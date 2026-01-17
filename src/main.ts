@@ -1,15 +1,14 @@
-
-
 import { bootstrapApplication } from '@angular/platform-browser';
-import { AppComponent } from './src/app.component';
+import { AppComponent } from './app/app.component';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { routes } from './app/app.routes';
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    provideHttpClient(withFetch())
+    provideHttpClient(withFetch()),
+    provideRouter(routes)
   ]
 }).catch((err) => console.error(err));
-
-// AI Studio always uses an `index.tsx` file for all project types.
