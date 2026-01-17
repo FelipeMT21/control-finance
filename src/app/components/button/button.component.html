@@ -1,0 +1,12 @@
+<button 
+  (click)="onClick()"
+  [class.is-active]="isActive()"
+  class="px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all border shadow-sm cursor-pointer active:scale-95"
+  [class]="isActive() 
+    ? (customColor() ? 'text-white border-white/20' : 'bg-indigo-600 text-white border-indigo-500')
+    : 'bg-transparent text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'"
+  [style.backgroundColor]="isActive() ? customColor() : ''"
+  [style.--hover-color]="customColor() ? customColor() : 'var(--color-indigo-600)'">
+  
+  <ng-content></ng-content>
+</button>

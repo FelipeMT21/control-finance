@@ -1,9 +1,11 @@
 import { Component, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
-import { FinanceService, Transaction, CreditCard, Owner } from './services/finance.service';
-import { ChartComponent, ChartData } from './components/chart.component';
+
+import { FinanceService, Transaction, CreditCard, Owner } from '../../services/finance.service';
+import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
+import { ButtonComponent } from '@app/components/button/button.component';
 
 type BatchActionType = 'delete' | 'edit';
 type BatchScope = 'single' | 'all' | 'future' | 'past';
@@ -15,12 +17,12 @@ interface PendingAction {
 }
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ChartComponent],
-  templateUrl: './app.component.html'
+  imports: [CommonModule, ReactiveFormsModule, ChartComponent, ButtonComponent],
+  templateUrl: './dashboard.component.html'
 })
-export class AppComponent {
+export class DashboardComponent {
   financeService = inject(FinanceService);
   fb = inject(FormBuilder);
 
@@ -71,11 +73,7 @@ export class AppComponent {
     // Faz o carregamento inicial filtrado pelo mês e ano que foi definido nos signals
     this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
 
-    // Restante das inicializações dos formulários...
-    this.transactionForm = this.fb.group({
-      // ...
-    });
-
+    // Inicialização dos formulários
     this.transactionForm = this.fb.group({
       description: ['', Validators.required],
       amount: [null, [Validators.required, Validators.min(0.01)]],
@@ -87,10 +85,12 @@ export class AppComponent {
       installments: [1]
     });
 
+    // Observa mudanças no tipo (Receita/Despesa)
     this.transactionForm.get('type')?.valueChanges.subscribe(val => {
       if (val === 'income') this.useCard.set(false);
     });
 
+    // Observa mudança de cartão para setar o dono automaticamente
     this.transactionForm.get('cardId')?.valueChanges.subscribe(cardId => {
       if (this.useCard() && cardId) {
         const card = this.financeService.getCard(cardId);
@@ -138,21 +138,18 @@ export class AppComponent {
       const currentOwnerId = this.selectedOwnerId();
 
       // 1. Filtro de Mês e Ano (Prioridade total aos campos do Java)
-      // Note que comparamos o que está no objeto com o que foi selecionado nas setas
       const dateMatch = t.effectiveMonth === this.selectedMonth() &&
         t.effectiveYear === this.selectedYear();
 
       if (!dateMatch) return false;
 
       // 2. Filtro por CARTÃO
-      // Se houver um cartão selecionado no filtro lateral, mostramos apenas ele
       if (currentCardId) {
         const tCardId = t.creditCard?.id || t.cardId;
         if (tCardId !== currentCardId) return false;
       }
 
       // 3. Filtro por DONO
-      // Se houver um dono selecionado, filtramos por ele
       if (currentOwnerId) {
         const tOwnerId = t.owner?.id || t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
@@ -226,7 +223,6 @@ export class AppComponent {
     ];
   });
 
-  // --- CORREÇÃO 1: Logica do Gráfico ---
   categoryChartData = computed<ChartData[]>(() => {
     const expenses = this.filteredTransactions().filter(t => t.type === 'expense');
     const groups: Record<string, number> = {};
@@ -266,7 +262,7 @@ export class AppComponent {
 
   // --- CRUD & Batch Logic ---
 
-initiateDelete(transaction: Transaction) {
+  initiateDelete(transaction: Transaction) {
     if (transaction.groupId) {
       this.pendingAction.set({ type: 'delete', transaction });
       this.activeModal.set('batch-confirm');
@@ -308,7 +304,6 @@ initiateDelete(transaction: Transaction) {
         // 1. Descobre a posição (índice) da transação atual na lista ordenada por data
         const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
 
-        // Se por algum milagre não achar, previne erro
         if (currentIndex === -1) {
           this.closeModal();
           return;
@@ -323,18 +318,15 @@ initiateDelete(transaction: Transaction) {
           targetIds = groupTransactions.map(t => t.id);
         }
         else if (scope === 'future') {
-          // Pega da posição atual até o fim da lista
           targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
         }
         else if (scope === 'past') {
-          // Pega do início da lista até a posição atual
           targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
         }
 
         this.financeService.deleteTransactionsBulk(targetIds).subscribe({
           next: () => {
             this.closeModal();
-            // Atualiza a tela
             this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
           },
           error: (err) => alert('Erro ao excluir em lote: ' + err.message)
@@ -343,7 +335,7 @@ initiateDelete(transaction: Transaction) {
       return;
     }
 
-    // --- LÓGICA DE EDIÇÃO (Manteve igual, apenas redireciona) ---
+    // --- LÓGICA DE EDIÇÃO ---
     if (action.type === 'edit') {
       this.batchEditScope.set(scope);
       this.activeModal.set(null);
@@ -381,7 +373,6 @@ initiateDelete(transaction: Transaction) {
         this.financeService.updateTransaction(editId, updatePayload).subscribe({
           next: () => {
             this.closeModal();
-            // ADICIONADO: Recarrega a tela após editar item único
             this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
           },
           error: (err) => alert('Erro ao atualizar: ' + err.message)
@@ -389,10 +380,10 @@ initiateDelete(transaction: Transaction) {
       } else {
         // --- BATCH UPDATE LOGIC ---
         const original = this.financeService.transactions().find(t => t.id === editId);
-        
+
         if (original && original.groupId) {
           this.financeService.fetchGroup(original.groupId).subscribe(groupTransactions => {
-            
+
             const currentIndex = groupTransactions.findIndex(t => t.id === original.id);
             let targetTransactions: Transaction[] = [];
 
@@ -402,9 +393,9 @@ initiateDelete(transaction: Transaction) {
 
             const requests = targetTransactions.map(t => {
               const batchPayload = { ...updatePayload };
-              batchPayload.purchaseDate = t.purchaseDate; 
-              batchPayload.description = t.description;   
-              batchPayload.amount = val.amount; 
+              batchPayload.purchaseDate = t.purchaseDate;
+              batchPayload.description = t.description;
+              batchPayload.amount = val.amount;
               return this.financeService.updateTransaction(t.id, batchPayload);
             });
 
@@ -435,7 +426,6 @@ initiateDelete(transaction: Transaction) {
       ).subscribe({
         next: () => {
           this.closeModal();
-          // ADICIONADO: Recarrega a tela após criar nova transação
           this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
         },
         error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
@@ -460,7 +450,6 @@ initiateDelete(transaction: Transaction) {
     });
   }
 
-  // --- CORREÇÃO 2: Lógica do Modal de Edição ---
   openModal(type: 'transaction' | 'settings' | 'batch-confirm', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
 
@@ -468,25 +457,22 @@ initiateDelete(transaction: Transaction) {
       if (transactionToEdit) {
         this.editingTransactionId.set(transactionToEdit.id);
 
-        // 1. Pegamos os IDs de forma limpa e direta
-        const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId;
-        const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId;
-        const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId;
+        const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId || null;
+        const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId || null;
+        const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId || null;
 
-        // 2. Definimos o estado visual do cartão
         this.useCard.set(!!tCardId);
 
         const total = transactionToEdit.installmentTotal || 1;
         this.customInstallmentMode.set(total > 24);
 
-        // 3. Setamos o formulário de uma vez só
         this.transactionForm.setValue({
           description: transactionToEdit.description,
           amount: transactionToEdit.amount,
           type: transactionToEdit.type,
           date: transactionToEdit.purchaseDate.split('T')[0],
           ownerId: tOwnerId || '',
-          categoryId: tCatId || '', // Usando a constante única definida acima
+          categoryId: tCatId || '',
           cardId: tCardId || '',
           installments: 1
         });
@@ -581,12 +567,12 @@ initiateDelete(transaction: Transaction) {
     return this.financeService.getCategory(idOrName)?.name || idOrName;
   }
 
-  getCardName(id: string | null): string {
+  getCardName(id: string | null | undefined): string {
     if (!id) return '';
     return this.financeService.getCard(id)?.name || 'Cartão';
   }
 
-  getOwnerName(id: string | undefined): string {
+  getOwnerName(id: string | null | undefined): string {
     if (!id) return '-';
     return this.financeService.getOwner(id)?.name || '-';
   }
@@ -615,7 +601,7 @@ initiateDelete(transaction: Transaction) {
   }
 
   editCard(card: CreditCard) {
-    this.editingCardId.set(card.id);
+    this.editingCardId.set(card.id ?? null);
     this.cardForm.patchValue(card);
   }
 
