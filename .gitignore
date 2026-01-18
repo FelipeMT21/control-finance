@@ -49,7 +49,7 @@ Thumbs.db
 .env.local
 .env.*.local
 # Ignora arquivos de ambiente que podem conter chaves de API
-src/environments/environment.ts
+
 # (Mantenha o environment.development.ts se não tiver senhas reais)
 
 # ------------------------------------------------------------------
