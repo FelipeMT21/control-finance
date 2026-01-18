@@ -2,7 +2,7 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
-import { environment } from 'src/environments/environment.development';
+import { environment } from 'src/environments/environment';
 
 // --- DATA MODELS ---
 
