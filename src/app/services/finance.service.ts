@@ -2,6 +2,7 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
+import { environment } from 'src/environments/environment.development';
 
 // --- DATA MODELS ---
 
@@ -63,10 +64,13 @@ export interface Transaction {
 })
 export class FinanceService {
   private http: HttpClient = inject(HttpClient);
-  private readonly API_URL = 'http://192.168.1.33:8080/transactions';
-  private readonly API_URL_CATEGORIES = 'http://192.168.1.33:8080/categories';
-  private readonly API_URL_OWNERS = 'http://192.168.1.33:8080/owners';
-  private readonly API_URL_CARDS = 'http://192.168.1.33:8080/cards';
+
+  private readonly BASE_URL = environment.apiUrl;
+
+  private readonly API_URL = `${this.BASE_URL}/transactions`;
+  private readonly API_URL_CATEGORIES = `${this.BASE_URL}/categories`;
+  private readonly API_URL_OWNERS = `${this.BASE_URL}/owners`;
+  private readonly API_URL_CARDS = `${this.BASE_URL}/cards`;
 
   // --- CONTROLE DE ESTADO DO FILTRO ---
   private lastViewedMonth = new Date().getMonth(); //
