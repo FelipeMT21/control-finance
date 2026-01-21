@@ -255,13 +255,35 @@
       <div class="lg:col-span-2">
         <div
           class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full">
-          <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-            <h3 class="font-semibold text-slate-800 dark:text-slate-200">
-              {{ selectedCardId() ? 'Itens da Fatura' : 'Extrato Detalhado' }}
-            </h3>
-            <span class="text-xs bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded">
-              {{ filteredTransactions().length }} lançamentos
-            </span>
+          <div
+            class="p-5 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex flex-col gap-1">
+              <h3 class="font-semibold text-slate-800 dark:text-slate-200">
+                {{ selectedCardId() ? 'Itens da Fatura' : 'Extrato Detalhado' }}
+              </h3>
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider">
+                {{ filteredTransactions().length }} lançamentos encontrados
+              </span>
+            </div>
+
+            <div
+              class="flex items-center bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              <button (click)="statusFilter.set('all')"
+                [class]="statusFilter() === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95">
+                Todos
+              </button>
+              <button (click)="statusFilter.set('pending')"
+                [class]="statusFilter() === 'pending' ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95">
+                Pendentes
+              </button>
+              <button (click)="statusFilter.set('paid')"
+                [class]="statusFilter() === 'paid' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95">
+                Pagos
+              </button>
+            </div>
           </div>
 
           <div class="flex-1 overflow-auto max-h-[600px] p-2">

@@ -46,6 +46,7 @@ export class DashboardComponent {
   // Dashboard Context State
   selectedOwnerId = signal<string | null>(null); // New: Filter by Owner first
   selectedCardId = signal<string | null>(null);
+  statusFilter = signal<'all' | 'paid' | 'pending'>('all');
 
   // Date Navigation State
   today = new Date();
@@ -136,6 +137,7 @@ export class DashboardComponent {
     return this.financeService.transactions().filter(t => {
       const currentCardId = this.selectedCardId();
       const currentOwnerId = this.selectedOwnerId();
+      const currentStatus = this.statusFilter();
 
       // 1. Filtro de Mês e Ano (Prioridade total aos campos do Java)
       const dateMatch = t.effectiveMonth === this.selectedMonth() &&
@@ -154,6 +156,9 @@ export class DashboardComponent {
         const tOwnerId = t.owner?.id || t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
       }
+
+      if (currentStatus === 'paid' && !t.paid) return false;
+      if (currentStatus === 'pending' && t.paid) return false;
 
       return true;
 
