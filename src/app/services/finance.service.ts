@@ -2,7 +2,7 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
-import { environment } from 'src/environments/environment';
+import { environment } from '../../environments/environment';
 
 // --- DATA MODELS ---
 
@@ -41,6 +41,7 @@ export interface Transaction {
   type: TransactionType;
   purchaseDate: string;
   billingDate: string;
+  paid: boolean;
 
   // Objetos completos vindos do Java (JPA)
   category: Category;
