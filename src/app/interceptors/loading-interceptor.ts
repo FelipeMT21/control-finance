@@ -10,12 +10,12 @@ export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   loadingService.show();
   
   return next(req).pipe(
-    timeout(6000),
+    timeout(4500),
     retry({
       count: 3,
       delay: (error, retryCount) => {
         console.warn(`Tentativa ${retryCount} de acordar o Render...`);
-        return timer(4000);
+        return timer(2000);
       }
     }),
     finalize(() => {
