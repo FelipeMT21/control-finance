@@ -433,6 +433,21 @@ export class DashboardComponent {
     }
   }
 
+  togglePaid(transaction: Transaction) {
+    const novoStatus = !transaction.paid;
+
+    this.financeService.updateTransaction(transaction.id, { paid: novoStatus })
+    .subscribe({
+      next: () => {
+        this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+      },
+      error: (err) => {
+        console.error('Erro ao atualizar o pagamento ', err);
+        alert('Falha ao atualizar o status de pagamento.')
+      }
+    })
+  }
+
   // --- Modals & UI Helpers ---
 
   cancelOwnerEdit() {
