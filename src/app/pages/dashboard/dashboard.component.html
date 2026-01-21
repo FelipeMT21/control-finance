@@ -298,13 +298,94 @@
             </div>
             } @else {
             <table class="w-full text-left text-sm">
-              <thead class="bg-slate-50 dark:bg-slate-750 text-slate-500 dark:text-slate-400">
+
+              <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
                 <tr>
-                  <th class="px-4 py-3 font-medium rounded-l-lg">Descrição</th>
-                  <th class="px-4 py-3 font-medium hidden sm:table-cell">Categoria</th>
-                  <th class="px-4 py-3 font-medium text-right rounded-r-lg">Valor</th>
+                  <th class="px-4 py-3 font-medium rounded-l-lg group">
+                    <div class="flex items-center gap-4">
+                      <div (click)="toggleSort('description')"
+                        class="cursor-pointer hover:text-indigo-500 transition-colors flex items-center gap-1"
+                        [class.text-indigo-600]="sortConfig().key === 'description'">
+                        Descrição
+                        @if (sortConfig().key === 'description') {
+                        <span class="text-[10px] font-bold">{{ sortConfig().direction === 'asc' ? 'A-Z' : 'Z-A'
+                          }}</span>
+                        }
+                      </div>
+
+                      <div class="w-px h-3 bg-slate-300 dark:bg-slate-600"></div>
+
+                      <div (click)="toggleSort('date')"
+                        class="cursor-pointer hover:text-indigo-500 transition-colors flex items-center gap-1"
+                        [class.text-indigo-600]="sortConfig().key === 'date'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-[10px] uppercase font-bold">Data</span>
+
+                        <div class="flex flex-col text-[10px] leading-[0] transition-opacity"
+                          [class.opacity-20]="sortConfig().key !== 'date'">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                            [class.text-indigo-500]="sortConfig().key === 'date' && sortConfig().direction === 'asc'"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 15l7-7 7 7" />
+                          </svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                            [class.text-indigo-500]="sortConfig().key === 'date' && sortConfig().direction === 'desc'"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </th>
+
+                  <th class="px-4 py-3 font-medium hidden sm:table-cell group">
+                    <div (click)="toggleSort('category')"
+                      class="flex items-center gap-1 w-fit cursor-pointer hover:text-indigo-500 transition-colors"
+                      [class.text-indigo-600]="sortConfig().key === 'category'">
+                      Categoria
+                      <div class="flex flex-col text-[10px] leading-[0] transition-opacity"
+                        [class.opacity-20]="sortConfig().key !== 'category'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                          [class.text-indigo-500]="sortConfig().key === 'category' && sortConfig().direction === 'asc'"
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 15l7-7 7 7" />
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                          [class.text-indigo-500]="sortConfig().key === 'category' && sortConfig().direction === 'desc'"
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </th>
+
+                  <th class="px-4 py-3 font-medium text-right rounded-r-lg group">
+                    <div (click)="toggleSort('amount')"
+                      class="flex items-center justify-end gap-1 w-fit ml-auto cursor-pointer hover:text-indigo-500 transition-colors"
+                      [class.text-indigo-600]="sortConfig().key === 'amount'">
+                      Valor
+                      <div class="flex flex-col text-[10px] leading-[0] transition-opacity"
+                        [class.opacity-20]="sortConfig().key !== 'amount'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                          [class.text-indigo-500]="sortConfig().key === 'amount' && sortConfig().direction === 'asc'"
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 15l7-7 7 7" />
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5"
+                          [class.text-indigo-500]="sortConfig().key === 'amount' && sortConfig().direction === 'desc'"
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </th>
                 </tr>
               </thead>
+
               <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                 @for (t of filteredTransactions(); track t.id) {
                 <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors group">
