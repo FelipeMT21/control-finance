@@ -165,28 +165,31 @@ export class DashboardComponent {
     });
 
     return filtered.sort((a, b) => {
-      let valA: any;
-      let valB: any;
+      const { key, direction } = this.sortConfig();
 
-      if (sortOrder.key === 'description') {
-        valA = a.description.toLowerCase();
-        valB = b.description.toLowerCase();
-      } else if (sortOrder.key === 'amount') {
-        valA = a.amount;
-        valB = b.amount;
-      } else if (sortOrder.key === 'category') {
-        valA = this.getCategoryName(a.categoryId || a.category?.id).toLowerCase();
-        valB = this.getCategoryName(b.categoryId || b.category?.id).toLowerCase();
-      } else if (sortOrder.key === 'date') {
-        valA = new Date(a.purchaseDate).getTime();
-        valB = new Date(b.purchaseDate).getTime();
-      } else {
-        valA = new Date(a.purchaseDate).getTime();
-        valB = new Date(b.purchaseDate).getTime();
+      if (key === 'description' || key === 'category') {
+        const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId || a.category?.id);
+        const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId || b.category?.id);
+
+        const comparison = valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' });
+        return direction === 'asc' ? comparison : -comparison;
       }
 
-      if (valA < valB) return sortOrder.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.direction === 'asc' ? 1 : -1;
+      // Caso seja ordenação por NÚMERO ou DATA
+      let numA: number;
+      let numB: number;
+
+      if (key === 'amount') {
+        numA = a.amount;
+        numB = b.amount;
+      } else {
+        // Default: Data (purchaseDate)
+        numA = new Date(a.purchaseDate).getTime();
+        numB = new Date(b.purchaseDate).getTime();
+      }
+
+      if (numA < numB) return direction === 'asc' ? -1 : 1;
+      if (numA > numB) return direction === 'asc' ? 1 : -1;
       return 0;
     })
   })
