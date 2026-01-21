@@ -324,10 +324,11 @@
                       {{ t.category.name || getCategoryName(t.categoryId) }}
                     </span>
                   </td>
-                  <td class="px-4 py-3 text-right">
-                    <div class="flex flex-col items-end gap-2">
+                  <td class="px-4 py-3 text-right vertical-align-middle">
+                    <div class="flex flex-col items-end justify-center h-[48px] relative overflow-hidden">
 
-                      <div class="flex items-center gap-3">
+                      <div
+                        class="flex items-center gap-2 transition-transform duration-300 ease-in-out group-hover:-translate-y-2">
                         <span class="font-bold whitespace-nowrap"
                           [class]="t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'">
                           {{ t.type === 'income' ? '+' : '-' }} {{ formatCurrency(t.amount) }}
@@ -345,10 +346,10 @@
                         </button>
                       </div>
 
-                      <div class="flex gap-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div
+                        class="flex gap-0 absolute bottom-0 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-1 transition-all duration-300 ease-in-out">
                         <button (click)="initiateEdit(t)"
-                          class="p-1 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                          title="Editar">
+                          class="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -357,8 +358,7 @@
                         </button>
 
                         <button (click)="initiateDelete(t)"
-                          class="p-1 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
-                          title="Excluir">
+                          class="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="Excluir">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
