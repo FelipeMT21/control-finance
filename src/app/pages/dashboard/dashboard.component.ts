@@ -7,7 +7,7 @@ import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '@app/components/button/button.component';
 
-type BatchActionType = 'delete' | 'edit';
+type BatchActionType = 'delete' | 'edit' | 'pay';
 type BatchScope = 'single' | 'all' | 'future' | 'past';
 
 interface PendingAction {
@@ -295,34 +295,46 @@ export class DashboardComponent {
     const action = this.pendingAction();
     if (!action) return;
 
+    // --- LÓGICA DE PAGAMENTO (NOVO) ---
+    if (action.type === 'pay' as any) {
+      const isPaying = !action.transaction.paid;
+      let targetIds: string[] = [];
+
+      if (scope === 'single') {
+        targetIds = [action.transaction.id];
+      } else {
+        // Pega todas as transações do MESMO cartão que estão visíveis no dashboard agora
+        targetIds = this.filteredTransactions()
+          .filter(t => (t.creditCard?.id || t.cardId) === (action.transaction.creditCard?.id || action.transaction.cardId))
+          .map(t => t.id);
+      }
+
+      const requests = targetIds.map(id =>
+        this.financeService.updateTransaction(id, { paid: isPaying })
+      );
+
+      forkJoin(requests).subscribe({
+        next: () => {
+          this.closeModal();
+          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+        },
+        error: (err) => alert('Erro ao atualizar pagamento em lote: ' + err.message)
+      });
+      return;
+    }
+
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
     if (action.type === 'delete') {
       const groupId = action.transaction.groupId!;
-
       this.financeService.fetchGroup(groupId).subscribe(groupTransactions => {
-
-        // 1. Descobre a posição (índice) da transação atual na lista ordenada por data
         const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
-
-        if (currentIndex === -1) {
-          this.closeModal();
-          return;
-        }
+        if (currentIndex === -1) { this.closeModal(); return; }
 
         let targetIds: string[] = [];
-
-        if (scope === 'single') {
-          targetIds = [action.transaction.id];
-        }
-        else if (scope === 'all') {
-          targetIds = groupTransactions.map(t => t.id);
-        }
-        else if (scope === 'future') {
-          targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
-        }
-        else if (scope === 'past') {
-          targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
-        }
+        if (scope === 'single') targetIds = [action.transaction.id];
+        else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
+        else if (scope === 'future') targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
+        else if (scope === 'past') targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
 
         this.financeService.deleteTransactionsBulk(targetIds).subscribe({
           next: () => {
@@ -434,18 +446,22 @@ export class DashboardComponent {
   }
 
   togglePaid(transaction: Transaction) {
-    const novoStatus = !transaction.paid;
+    if (transaction.cardId) {
+      this.pendingAction.set({
+        type: 'pay' as any,
+        transaction: transaction
+      });
+      this.activeModal.set('batch-confirm');
+    } else {
+      this.executeTogglePaid(transaction.id, !transaction.paid);
+    }
+  }
 
-    this.financeService.updateTransaction(transaction.id, { paid: novoStatus })
-    .subscribe({
-      next: () => {
-        this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
-      },
-      error: (err) => {
-        console.error('Erro ao atualizar o pagamento ', err);
-        alert('Falha ao atualizar o status de pagamento.')
-      }
-    })
+  private executeTogglePaid(id: string, novoStatus: boolean) {
+    this.financeService.updateTransaction(id, { paid: novoStatus }).subscribe({
+      next: () => this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear()),
+      error: (err) => console.error('Erro ao atualizar status:', err)
+    });
   }
 
   // --- Modals & UI Helpers ---

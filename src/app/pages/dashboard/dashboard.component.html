@@ -388,26 +388,42 @@
     <div
       class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
       <div class="p-6 text-center">
+
         <div
-          class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400">
+          [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'"
+          class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+          @if (pendingAction()?.type === 'pay') {
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          } @else {
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
+          }
         </div>
+
         <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
-          Movimentação Parcelada
+          {{ pendingAction()?.type === 'pay' ? 'Confirmar Pagamento' : 'Movimentação Parcelada' }}
         </h3>
+
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+          @if (pendingAction()?.type === 'pay') {
+          Este item pertence a uma fatura. Deseja marcar como pago apenas este lançamento ou o cartão inteiro?
+          } @else {
           Esta é uma movimentação que se repete. Como você deseja aplicar a {{ pendingAction()?.type === 'delete' ?
           'exclusão' : 'alteração' }}?
+          }
         </p>
 
         <div class="flex flex-col gap-2">
           <button (click)="executeBatchAction('single')"
             class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
-            Apenas esta (Mês atual)
+            {{ pendingAction()?.type === 'pay' ? 'Apenas este item' : 'Apenas esta (Mês atual)' }}
           </button>
+
+          @if (pendingAction()?.type !== 'pay') {
           <button (click)="executeBatchAction('future')"
             class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
             Esta e as futuras
@@ -416,9 +432,13 @@
             class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
             Esta e as anteriores
           </button>
+          }
+
           <button (click)="executeBatchAction('all')"
-            class="w-full py-2.5 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-sm">
-            Todas as parcelas
+            [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'"
+            class="w-full py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm">
+            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId) +
+            ')' : 'Todas as parcelas' }}
           </button>
         </div>
 
