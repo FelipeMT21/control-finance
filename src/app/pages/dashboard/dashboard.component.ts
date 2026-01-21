@@ -47,6 +47,7 @@ export class DashboardComponent {
   selectedOwnerId = signal<string | null>(null); // New: Filter by Owner first
   selectedCardId = signal<string | null>(null);
   statusFilter = signal<'all' | 'paid' | 'pending'>('all');
+  sortConfig = signal<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
 
   // Date Navigation State
   today = new Date();
@@ -134,24 +135,24 @@ export class DashboardComponent {
   });
 
   filteredTransactions = computed(() => {
-    return this.financeService.transactions().filter(t => {
+    const transaction = this.financeService.transactions();
+    const sortOrder = this.sortConfig();
+
+    const filtered = transaction.filter(t => {
       const currentCardId = this.selectedCardId();
       const currentOwnerId = this.selectedOwnerId();
       const currentStatus = this.statusFilter();
 
-      // 1. Filtro de Mês e Ano (Prioridade total aos campos do Java)
       const dateMatch = t.effectiveMonth === this.selectedMonth() &&
         t.effectiveYear === this.selectedYear();
 
       if (!dateMatch) return false;
 
-      // 2. Filtro por CARTÃO
       if (currentCardId) {
         const tCardId = t.creditCard?.id || t.cardId;
         if (tCardId !== currentCardId) return false;
       }
 
-      // 3. Filtro por DONO
       if (currentOwnerId) {
         const tOwnerId = t.owner?.id || t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
@@ -161,9 +162,34 @@ export class DashboardComponent {
       if (currentStatus === 'pending' && t.paid) return false;
 
       return true;
+    });
 
-    }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  });
+    return filtered.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (sortOrder.key === 'description') {
+        valA = a.description.toLowerCase();
+        valB = b.description.toLowerCase();
+      } else if (sortOrder.key === 'amount') {
+        valA = a.amount;
+        valB = b.amount;
+      } else if (sortOrder.key === 'category') {
+        valA = this.getCategoryName(a.categoryId || a.category?.id).toLowerCase();
+        valB = this.getCategoryName(b.categoryId || b.category?.id).toLowerCase();
+      } else if (sortOrder.key === 'date') {
+        valA = new Date(a.purchaseDate).getTime();
+        valB = new Date(b.purchaseDate).getTime();
+      } else {
+        valA = new Date(a.purchaseDate).getTime();
+        valB = new Date(b.purchaseDate).getTime();
+      }
+
+      if (valA < valB) return sortOrder.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder.direction === 'asc' ? 1 : -1;
+      return 0;
+    })
+  })
 
   // Helper to get cards for the sub-menu
   ownerCards = computed(() => {
@@ -467,6 +493,16 @@ export class DashboardComponent {
       next: () => this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear()),
       error: (err) => console.error('Erro ao atualizar status:', err)
     });
+  }
+
+  toggleSort(key: string) {
+    const current = this.sortConfig();
+    if (current.key === key) {
+      this.sortConfig.set({ key, direction: current.direction === 'asc' ? 'desc' : 'asc' })
+    } else {
+      const direction = key === 'amount' ? 'desc' : 'asc';
+      this.sortConfig.set({ key, direction });
+    }
   }
 
   // --- Modals & UI Helpers ---
