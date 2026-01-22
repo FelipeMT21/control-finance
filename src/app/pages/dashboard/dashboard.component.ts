@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, computed, inject, signal, effect, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 
@@ -48,6 +48,16 @@ export class DashboardComponent {
   selectedCardId = signal<string | null>(null);
   statusFilter = signal<'all' | 'paid' | 'pending'>('all');
   sortConfig = signal<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
+
+  // --- BUSCA (ATUALIZADO) ---
+  searchQuery = signal('');
+  isSearchOpen = signal(false);
+  @ViewChild('searchInput') searchInput!: ElementRef;
+  windowWidth = window.innerWidth;
+  @HostListener('window:resize')
+  onResize() {
+    this.windowWidth = window.innerWidth;
+  }
 
   // Date Navigation State
   today = new Date();
@@ -136,7 +146,8 @@ export class DashboardComponent {
 
   filteredTransactions = computed(() => {
     const transaction = this.financeService.transactions();
-    const sortOrder = this.sortConfig();
+    const { key, direction } = this.sortConfig();
+    const query = this.searchQuery().toLowerCase().trim();
 
     const filtered = transaction.filter(t => {
       const currentCardId = this.selectedCardId();
@@ -161,15 +172,26 @@ export class DashboardComponent {
       if (currentStatus === 'paid' && !t.paid) return false;
       if (currentStatus === 'pending' && t.paid) return false;
 
+      if (query) {
+        const descText = t.description.toLowerCase();
+        const catText = (t.category?.name || this.getCategoryName(t.categoryId)).toLowerCase();
+        const ownerText = (t.owner?.name || this.getOwnerName(t.ownerId)).toLowerCase();
+
+        const descriptionMatch = descText.includes(query);
+        const categoryMatch = catText.includes(query);
+        const ownerMatch = ownerText.includes(query);
+
+        if (!descriptionMatch && !categoryMatch && !ownerMatch) return false;
+      }
+
       return true;
     });
 
     return filtered.sort((a, b) => {
-      const { key, direction } = this.sortConfig();
 
       if (key === 'description' || key === 'category') {
-        const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId || a.category?.id);
-        const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId || b.category?.id);
+        const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId || a.category?.id).trim();
+        const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId || b.category?.id).trim();
 
         const comparison = valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' });
         return direction === 'asc' ? comparison : -comparison;
@@ -505,6 +527,20 @@ export class DashboardComponent {
     } else {
       const direction = key === 'amount' ? 'desc' : 'asc';
       this.sortConfig.set({ key, direction });
+    }
+  }
+
+  toggleSearch() {
+    this.isSearchOpen.update(v => !v);
+
+    if (this.isSearchOpen()) {
+      setTimeout(() => {
+        if (this.searchInput) {
+          this.searchInput.nativeElement.focus();
+        }
+      }, 100);
+    } else {
+      this.searchQuery.set('');
     }
   }
 
