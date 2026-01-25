@@ -72,22 +72,26 @@ export class FinanceService {
     return {
       ...t, // Copia campos simples (id, description, amount)
 
-      // 2. Normalização de Enum (Java UPPER -> Front lower)
+      // 2. Normalização de Enum
       type: t.type.toLowerCase() as TransactionType,
 
-      // 3. Flattening (Achatamento) de Objetos para IDs
+      // 3. Mapeamento do novo campo PAID (Importante!)
+      // Se vier null do banco antigo, assume false
+      paid: t.paid ?? false,
+
+      // 4. Flattening de Objetos para IDs
       categoryId: t.category?.id || '',
       ownerId: t.owner?.id || '',
-      cardId: t.creditCard?.id || null, // Null é melhor para filtros que string vazia
+      cardId: t.creditCard?.id || null,
 
-      // 4. Metadados Calculados para o Front
+      // 5. Metadados Calculados
       effectiveMonth: dateRef.getUTCMonth(),
       effectiveYear: dateRef.getUTCFullYear(),
 
-      // 5. Fallbacks de Segurança
+      // 6. Fallbacks
       installmentCurrent: t.installmentCurrent || 1,
       installmentTotal: t.installmentTotal || 1,
-      billingDate: t.billingDate || t.purchaseDate // Garante que nunca falte data
+      billingDate: t.billingDate || t.purchaseDate
     } as Transaction;
   }
 

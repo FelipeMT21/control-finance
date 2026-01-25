@@ -369,7 +369,6 @@ export class DashboardComponent {
 
   executeBatchAction(scope: BatchScope) {
     const action = this.pendingAction();
-    // Cláusula de guarda: sai se não houver ação ou transação
     if (!action || !action.transaction) return;
 
     // --- LÓGICA DE PAGAMENTO ---
@@ -378,14 +377,24 @@ export class DashboardComponent {
       let targetIds: string[] = [];
 
       if (scope === 'single') {
-        // Type Guard
+        // Opção 1: Pagar apenas este item
         if (action.transaction.id) targetIds = [action.transaction.id];
       } else {
-        // Pega todas as transações do MESMO cartão visíveis agora
+        // Opção 2: Pagar Fatura Inteira (scope === 'all')
+
+        // Identifica o cartão da transação clicada
         const currentCardId = action.transaction.creditCard?.id || action.transaction.cardId;
 
-        targetIds = this.filteredTransactions()
-          .filter(t => (t.creditCard?.id || t.cardId) === currentCardId)
+        if (!currentCardId) {
+          console.warn('Tentativa de pagar fatura sem cartão identificado.');
+          return;
+        }
+
+        targetIds = this.financeService.transactions()
+          .filter(t => {
+            const tCardId = t.creditCard?.id || t.cardId;
+            return tCardId === currentCardId;
+          })
           // Filtrado para garantir que só foi pego quem tem ID (Type Guard)
           .map(t => t.id)
           .filter((id): id is string => !!id);
