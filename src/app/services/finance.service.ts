@@ -3,62 +3,11 @@ import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-// --- DATA MODELS ---
-
-export interface Owner {
-  id: string;
-  name: string;
-}
-
-export interface Category {
-  id?: string;
-  name: string;
-  color: string;
-}
-
-export interface CreditCard {
-  id?: string;
-  name: string;
-  owner: Owner;
-  closingDay: number;
-  dueDay: number;
-  color: string;
-}
-
-export interface UserSettings {
-  monthStartDay: number;
-  darkMode: boolean;
-}
-
-export type TransactionType = 'income' | 'expense';
-
-// Adjusted Interface for Backend Compatibility
-export interface Transaction {
-  id: string; // UUID from Backend
-  description: string;
-  amount: number;
-  type: TransactionType;
-  purchaseDate: string;
-  billingDate: string;
-  paid: boolean;
-
-  // Objetos completos vindos do Java (JPA)
-  category: Category;
-  owner: Owner;
-  creditCard: CreditCard | null;
-
-  // IDs auxiliares para o Frontend
-  categoryId?: string;
-  ownerId?: string;
-  cardId?: string | null;
-  groupId?: string;
-
-  installmentCurrent?: number;
-  installmentTotal?: number;
-  effectiveMonth?: number;
-  effectiveYear?: number;
-}
+import { Category } from '@app/models/category.model';
+import { Owner } from '@app/models/owner.model';
+import { CreditCard } from '@app/models/creditCard.model';
+import { Transaction, TransactionType } from '@app/models/transaction.model';
+import { UserSettings } from '@app/models/user-settings.model';
 
 @Injectable({
   providedIn: 'root'
