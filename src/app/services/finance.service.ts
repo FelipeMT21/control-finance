@@ -3,11 +3,13 @@ import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, forkJoin, map, Observable, catchError, throwError, delay } from 'rxjs';
 import { environment } from '../../environments/environment';
+
+// --- MODELS ---
+import { UserSettings } from '@app/models/user-settings.model';
+import { Transaction, TransactionType } from '@app/models/transaction.model';
 import { Category } from '@app/models/category.model';
 import { Owner } from '@app/models/owner.model';
 import { CreditCard } from '@app/models/creditCard.model';
-import { Transaction, TransactionType } from '@app/models/transaction.model';
-import { UserSettings } from '@app/models/user-settings.model';
 
 @Injectable({
   providedIn: 'root'
@@ -50,9 +52,7 @@ export class FinanceService {
     this.loadOwners(); // Load Owners from API
     this.loadCards(); // Load Cards from API
 
-    // Substitua o loadAll() por este para carregar o mês atual na inicialização:
     this.loadByMonth(this.lastViewedMonth, this.lastViewedYear);
-    //this.loadAll(); // Load Transactions from API
 
     // Auto-save effects (Only for non-backend entities)
     effect(() => localStorage.setItem('fincontrol_settings_v2', JSON.stringify(this.settings())));
@@ -61,6 +61,34 @@ export class FinanceService {
   private loadStorageData() {
     const savedSettings = localStorage.getItem('fincontrol_settings_v2');
     if (savedSettings) this.settings.set(JSON.parse(savedSettings));
+  }
+
+  // --- MÉTODOS DE MAPEAMENTO CENTRALIZADO (O "Tradutor") ---
+
+  private mapTransaction(t: any): Transaction {
+    // 1. Data de referência (Prioridade para billingDate no Dashboard)
+    const dateRef = new Date(t.billingDate || t.purchaseDate);
+
+    return {
+      ...t, // Copia campos simples (id, description, amount)
+
+      // 2. Normalização de Enum (Java UPPER -> Front lower)
+      type: t.type.toLowerCase() as TransactionType,
+
+      // 3. Flattening (Achatamento) de Objetos para IDs
+      categoryId: t.category?.id || '',
+      ownerId: t.owner?.id || '',
+      cardId: t.creditCard?.id || null, // Null é melhor para filtros que string vazia
+
+      // 4. Metadados Calculados para o Front
+      effectiveMonth: dateRef.getUTCMonth(),
+      effectiveYear: dateRef.getUTCFullYear(),
+
+      // 5. Fallbacks de Segurança
+      installmentCurrent: t.installmentCurrent || 1,
+      installmentTotal: t.installmentTotal || 1,
+      billingDate: t.billingDate || t.purchaseDate // Garante que nunca falte data
+    } as Transaction;
   }
 
   // --- HTTP METHODS ---
@@ -180,27 +208,7 @@ export class FinanceService {
   loadAll() {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
-        const mappedData: Transaction[] = data.map(t => {
-          // IMPORTANTE: Para o Dashboard, usamos o billingDate que vem do Java
-          // Usamos UTC para evitar que fusos horários mudem o dia 01 para 31
-          const dateRef = new Date(t.billingDate);
-
-          return {
-            ...t,
-            type: t.type.toLowerCase() as TransactionType,
-
-            // Mapeamento de IDs para compatibilidade com os filtros do Componente
-            categoryId: t.category?.id,
-            ownerId: t.owner?.id,
-            cardId: t.creditCard?.id || null,
-
-            // O Dashboard agora filtra pela data de faturamento correta
-            effectiveMonth: dateRef.getUTCMonth(),
-            effectiveYear: dateRef.getUTCFullYear(),
-            installmentCurrent: 1,
-            installmentTotal: 1
-          };
-        });
+        const mappedData = data.map(t => this.mapTransaction(t));
         this._transactions.set(mappedData);
       },
       error: (err) => console.error('Failed to load transactions from API', err)
@@ -215,18 +223,7 @@ export class FinanceService {
       params: { month: javaMonth.toString(), year: year.toString() }
     }).subscribe({
       next: (data) => {
-        const mappedData: Transaction[] = data.map(t => {
-          const dateRef = new Date(t.billingDate);
-          return {
-            ...t,
-            type: t.type.toLowerCase() as TransactionType,
-            categoryId: t.category?.id,
-            ownerId: t.owner?.id,
-            cardId: t.creditCard?.id || null,
-            effectiveMonth: dateRef.getUTCMonth(),
-            effectiveYear: dateRef.getUTCFullYear(),
-          };
-        });
+        const mappedData: Transaction[] = data.map(t => this.mapTransaction(t));
         this._transactions.set(mappedData);
       },
       error: (err) => console.error('Erro ao filtrar:', err)
@@ -345,29 +342,14 @@ export class FinanceService {
     });
   }
 
-  // Função auxiliar para buscar o grupo COMPLETO no servidor
   fetchGroup(groupId: string): Observable<Transaction[]> {
-    // Como seu backend não tem um endpoint específico "/group/:id", 
-    // vamos buscar tudo e filtrar (Solução temporária mas funcional)
     return this.http.get<any[]>(this.API_URL).pipe(
-      map(data => {
-        return data
+      map(data =>
+        data
           .filter(t => t.groupId === groupId) // Filtra pelo ID do grupo
-          .map(t => {
-            // Mapeia igual ao loadAll para garantir compatibilidade
-            const dateRef = new Date(t.billingDate || t.purchaseDate);
-            return {
-              ...t,
-              type: t.type.toLowerCase() as TransactionType,
-              categoryId: t.category?.id,
-              ownerId: t.owner?.id,
-              cardId: t.creditCard?.id || null,
-              effectiveMonth: dateRef.getUTCMonth(),
-              effectiveYear: dateRef.getUTCFullYear(),
-            } as Transaction;
-          })
-          .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
-      })
+          .map(t => this.mapTransaction(t))
+          .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime())
+      )
     );
   }
 
