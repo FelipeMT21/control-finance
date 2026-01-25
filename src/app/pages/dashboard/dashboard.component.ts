@@ -2,7 +2,10 @@ import { Component, computed, inject, signal, effect, ViewChild, ElementRef, Hos
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 
-import { FinanceService, Transaction, CreditCard, Owner } from '../../services/finance.service';
+import { FinanceService } from '../../services/finance.service';
+import { Owner } from '@app/models/owner.model';
+import { CreditCard } from '@app/models/creditCard.model';
+import { Transaction } from '@app/models/transaction.model';
 import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '@app/components/button/button.component';
@@ -244,7 +247,10 @@ export class DashboardComponent {
     if (!cardId) return null;
 
     const card = this.financeService.getCard(cardId);
-    if (!card) return null;
+    if (!card || !card.owner.id) {
+      console.warn('Cartão selecionado está incompleto ou não foi encontrado.');
+      return null;
+    }
 
     let endMonth = this.selectedMonth();
     let endYear = this.selectedYear();
@@ -308,30 +314,44 @@ export class DashboardComponent {
   // --- Navigation Actions ---
 
   selectOwnerFilter(ownerId: string | null) {
-    this.selectedOwnerId.set(ownerId);
+
+    const nextOwnerId = this.selectedOwnerId() === ownerId ? null : ownerId;
+
+    this.selectedOwnerId.set(nextOwnerId);
     this.selectedCardId.set(null); // Reset card when switching owner context
   }
 
   selectCardFilter(cardId: string | null) {
-    this.selectedCardId.set(cardId);
+
+    const nextCardId = this.selectedCardId() === cardId ? null : cardId;
+
+    this.selectedCardId.set(nextCardId);
   }
 
   // --- CRUD & Batch Logic ---
 
   initiateDelete(transaction: Transaction) {
+    // 1. Se tem grupo, abre o modal de lote e encerra aqui
     if (transaction.groupId) {
       this.pendingAction.set({ type: 'delete', transaction });
       this.activeModal.set('batch-confirm');
-    } else {
-      if (confirm('Excluir esta movimentação?')) {
-        this.financeService.deleteTransaction(transaction.id).subscribe({
-          next: () => {
-            this.closeModal();
-            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
-          },
-          error: (err) => alert('Erro ao excluir: ' + err.message)
-        });
-      }
+    }
+
+    // 2. Verificação de segurança (Type Guard)
+    if (!transaction.id) {
+      console.warn('Tentativa de excluir transação sem ID persistido.');
+      return;
+    }
+
+    // 3. Ação para transação individual
+    if (confirm('Excluir esta movimentação?')) {
+      this.financeService.deleteTransaction(transaction.id).subscribe({
+        next: () => {
+          this.closeModal();
+          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+        },
+        error: (err) => alert('Erro ao excluir: ' + err.message)
+      });
     }
   }
 
@@ -349,21 +369,29 @@ export class DashboardComponent {
 
   executeBatchAction(scope: BatchScope) {
     const action = this.pendingAction();
-    if (!action) return;
+    // Cláusula de guarda: sai se não houver ação ou transação
+    if (!action || !action.transaction) return;
 
-    // --- LÓGICA DE PAGAMENTO (NOVO) ---
-    if (action.type === 'pay' as any) {
+    // --- LÓGICA DE PAGAMENTO ---
+    if (action.type === 'pay') {
       const isPaying = !action.transaction.paid;
       let targetIds: string[] = [];
 
       if (scope === 'single') {
-        targetIds = [action.transaction.id];
+        // Type Guard
+        if (action.transaction.id) targetIds = [action.transaction.id];
       } else {
-        // Pega todas as transações do MESMO cartão que estão visíveis no dashboard agora
+        // Pega todas as transações do MESMO cartão visíveis agora
+        const currentCardId = action.transaction.creditCard?.id || action.transaction.cardId;
+
         targetIds = this.filteredTransactions()
-          .filter(t => (t.creditCard?.id || t.cardId) === (action.transaction.creditCard?.id || action.transaction.cardId))
-          .map(t => t.id);
+          .filter(t => (t.creditCard?.id || t.cardId) === currentCardId)
+          // Filtrado para garantir que só foi pego quem tem ID (Type Guard)
+          .map(t => t.id)
+          .filter((id): id is string => !!id);
       }
+
+      if (targetIds.length === 0) return;
 
       const requests = targetIds.map(id =>
         this.financeService.updateTransaction(id, { paid: isPaying })
@@ -386,13 +414,17 @@ export class DashboardComponent {
         const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
         if (currentIndex === -1) { this.closeModal(); return; }
 
-        let targetIds: string[] = [];
+        let targetIds: (string | undefined)[] = [];
         if (scope === 'single') targetIds = [action.transaction.id];
         else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
         else if (scope === 'future') targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
         else if (scope === 'past') targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
 
-        this.financeService.deleteTransactionsBulk(targetIds).subscribe({
+        const validIds = targetIds.filter((id): id is string => !!id);
+
+        if (validIds.length === 0) return;
+
+        this.financeService.deleteTransactionsBulk(validIds).subscribe({
           next: () => {
             this.closeModal();
             this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
@@ -455,18 +487,27 @@ export class DashboardComponent {
             const currentIndex = groupTransactions.findIndex(t => t.id === original.id);
             let targetTransactions: Transaction[] = [];
 
+            // 1. Define o escopo das parcelas afetadas
             if (scope === 'all') targetTransactions = groupTransactions;
             else if (scope === 'future') targetTransactions = groupTransactions.slice(currentIndex);
             else if (scope === 'past') targetTransactions = groupTransactions.slice(0, currentIndex + 1);
 
-            const requests = targetTransactions.map(t => {
-              const batchPayload = { ...updatePayload };
-              batchPayload.purchaseDate = t.purchaseDate;
-              batchPayload.description = t.description;
-              batchPayload.amount = val.amount;
-              return this.financeService.updateTransaction(t.id, batchPayload);
-            });
+            // 2. Cria as requisições filtrando apenas quem tem ID válido
+            const requests = targetTransactions
+              .filter((t): t is Transaction & { id: string } => !!t.id) // Type Guard
+              .map(t => {
+                const batchPayload = { ...updatePayload };
+                // Manter os dados que não devem mudar em lote (específicos de cada parcela)
+                batchPayload.purchaseDate = t.purchaseDate;
+                batchPayload.description = t.description;
+                // Atualizamos o que foi solicitado (como o valor total/parcela)
+                batchPayload.amount = val.amount;
+                return this.financeService.updateTransaction(t.id, batchPayload);
+              });
 
+            if (requests.length === 0) return;
+
+            // 3. Orquestra a atualização paralela
             forkJoin(requests).subscribe({
               next: () => {
                 this.closeModal();
@@ -502,21 +543,29 @@ export class DashboardComponent {
   }
 
   togglePaid(transaction: Transaction) {
-    if (transaction.cardId) {
+    if (transaction.cardId || transaction.creditCard?.id) {
       this.pendingAction.set({
-        type: 'pay' as any,
+        type: 'pay',
         transaction: transaction
       });
       this.activeModal.set('batch-confirm');
-    } else {
+      return;
+    }
+
+    if (transaction.id) {
       this.executeTogglePaid(transaction.id, !transaction.paid);
+    } else {
+      console.warn('Não é possível alterar o status de uma transação sem ID.');
     }
   }
 
   private executeTogglePaid(id: string, novoStatus: boolean) {
     this.financeService.updateTransaction(id, { paid: novoStatus }).subscribe({
       next: () => this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear()),
-      error: (err) => console.error('Erro ao atualizar status:', err)
+      error: (err) => {
+        console.error('Erro ao atualizar status:', err);
+        alert('Não foi possível atualizar o pagamento. Tente novamente.');
+      }
     });
   }
 
@@ -564,54 +613,55 @@ export class DashboardComponent {
   openModal(type: 'transaction' | 'settings' | 'batch-confirm', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
 
-    if (type === 'transaction') {
-      if (transactionToEdit) {
-        this.editingTransactionId.set(transactionToEdit.id);
-
-        const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId || null;
-        const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId || null;
-        const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId || null;
-
-        this.useCard.set(!!tCardId);
-
-        const total = transactionToEdit.installmentTotal || 1;
-        this.customInstallmentMode.set(total > 24);
-
-        this.transactionForm.setValue({
-          description: transactionToEdit.description,
-          amount: transactionToEdit.amount,
-          type: transactionToEdit.type,
-          date: transactionToEdit.purchaseDate.split('T')[0],
-          ownerId: tOwnerId || '',
-          categoryId: tCatId || '',
-          cardId: tCardId || '',
-          installments: 1
-        });
-
-      } else {
-        // NEW Transaction
-        this.editingTransactionId.set(null);
-        this.batchEditScope.set(null);
-        this.customInstallmentMode.set(false);
-        const defaultOwner = this.financeService.owners()[0]?.id || '';
-        const defaultCat = this.financeService.categories()[0]?.id || '';
-        const defaultCard = this.financeService.cards()[0]?.id || '';
-
-        this.transactionForm.reset({
-          type: 'expense',
-          date: this.getISODate(new Date()),
-          ownerId: defaultOwner,
-          categoryId: defaultCat,
-          cardId: defaultCard,
-          installments: 1
-        });
-        this.useCard.set(false);
-      }
-    } else if (type === 'settings') {
+    // Tratamento específico para Settings
+    if (type === 'settings') {
       this.cancelOwnerEdit();
       this.cancelCardEdit();
-      this.preferencesForm.setValue({
+      this.preferencesForm.patchValue({
         monthStartDay: this.financeService.settings().monthStartDay
+      });
+      return;
+    }
+
+    // Se não for transação, não precisa rodar o código abaixo
+    if (type !== 'transaction') return;
+
+    // Lógica para EDIÇÃO
+    if (transactionToEdit?.id) {
+      this.editingTransactionId.set(transactionToEdit.id);
+
+      const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId || '';
+      const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId || '';
+      const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId || '';
+
+      this.useCard.set(!!tCardId);
+      this.customInstallmentMode.set((transactionToEdit.installmentTotal || 1) > 24);
+
+      this.transactionForm.setValue({
+        description: transactionToEdit.description || '',
+        amount: transactionToEdit.amount || 0,
+        type: transactionToEdit.type || 'expense',
+        date: transactionToEdit.purchaseDate ? transactionToEdit.purchaseDate.split('T')[0] : '',
+        ownerId: tOwnerId,
+        categoryId: tCatId,
+        cardId: tCardId,
+        installments: 1
+      });
+    }
+    // Lógica para NOVO CADASTRO
+    else {
+      this.editingTransactionId.set(null);
+      this.batchEditScope.set(null);
+      this.customInstallmentMode.set(false);
+      this.useCard.set(false);
+
+      this.transactionForm.reset({
+        type: 'expense',
+        date: this.getISODate(new Date()),
+        ownerId: this.financeService.owners()[0]?.id || '',
+        categoryId: this.financeService.categories()[0]?.id || '',
+        cardId: this.financeService.cards()[0]?.id || '',
+        installments: 1
       });
     }
   }
@@ -728,6 +778,7 @@ export class DashboardComponent {
   }
 
   editOwner(owner: Owner) {
+    if (!owner.id) return;
     this.editingOwnerId.set(owner.id);
     this.ownerForm.patchValue({ name: owner.name });
   }
