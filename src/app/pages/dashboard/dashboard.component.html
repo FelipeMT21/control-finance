@@ -78,9 +78,7 @@
 
             <!-- Owners Buttons -->
             @for (owner of financeService.owners(); track owner.id) {
-            <app-button
-            [isActive]="selectedOwnerId() === owner.id" 
-            (clicked)="selectOwnerFilter(owner.id || null)">
+            <app-button [isActive]="selectedOwnerId() === owner.id" (clicked)="selectOwnerFilter(owner.id || null)">
               {{ owner.name }}
             </app-button>
             }
@@ -109,6 +107,17 @@
         <!-- Month Navigation -->
         <div
           class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto ml-auto">
+
+          <button (click)="openModal('calendar')"
+            class="p-2 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer active:scale-90"
+            title="Abrir Calendário">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+
           <button (click)="changeMonth(-1)"
             class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors dark:hover:text-indigo-400 cursor-pointer active:scale-90">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -254,7 +263,36 @@
       </div>
 
       <!-- Right Column: Transactions List -->
+
       <div class="lg:col-span-2">
+
+        @if (selectedDay()) {
+        <div
+          class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-xl mb-6 animate-in slide-in-from-top-2">
+          <div class="flex items-center gap-3">
+            <div class="bg-indigo-500 p-2 rounded-lg text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-indigo-900 dark:text-indigo-100">
+                Filtrando pelo dia {{ selectedDay() }}
+              </h4>
+              <p class="text-xs text-indigo-600 dark:text-indigo-400">
+                Apenas transações que fecham ou ocorrem nesta data.
+              </p>
+            </div>
+          </div>
+
+          <button (click)="clearDayFilter()"
+            class="px-4 py-2 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-lg shadow-sm border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer">
+            Limpar Filtro
+          </button>
+        </div>
+        }
         <div
           class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full">
           <div
@@ -594,7 +632,8 @@
           <button (click)="executeBatchAction('all')"
             [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'"
             class="w-full py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm">
-            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId) +
+            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId ||
+            pendingAction()?.transaction?.creditCard?.id) +
             ')' : 'Todas as parcelas' }}
           </button>
         </div>
@@ -1128,6 +1167,18 @@
         }
 
       </div>
+    </div>
+  </div>
+  }
+
+  <!-- CALENDAR MODAL -->
+  @if (activeModal() === 'calendar') {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+
+    <div class="relative z-10 w-full max-w-sm animate-in zoom-in-95 duration-200">
+      <app-calendar-view (daySelected)="onDashboardCalendarSelect($event)">
+      </app-calendar-view>
     </div>
   </div>
   }

@@ -1,0 +1,75 @@
+<div class="w-full bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-xl transition-colors duration-300">
+  
+  <div class="flex items-center justify-between mb-6 px-1">
+    <button (click)="prevMonth()" 
+      class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors active:scale-90 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+    
+    <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 capitalize select-none">
+      {{ monthLabel() }}
+    </h2>
+
+    <button (click)="nextMonth()" 
+      class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors active:scale-90 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="grid grid-cols-7 mb-2">
+    @for (day of weekDays; track $index) {
+      <div class="text-center text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase py-1 select-none">
+        {{ day }}
+      </div>
+    }
+  </div>
+
+  <div class="grid grid-cols-7 gap-1">
+    @for (cell of calendarDays(); track $index) {
+      <div 
+        (click)="selectDay(cell)"
+        [class.invisible]="!cell.date"
+        [class.border-indigo-500]="isToday(cell.date)"
+        [class.bg-indigo-50]="isToday(cell.date)"
+        [class.dark:bg-indigo-900/30]="isToday(cell.date)"
+        class="relative h-12 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 group">
+        
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+          {{ cell.day }}
+        </span>
+
+        <div class="mt-1 flex gap-0.5 min-h-[6px]">
+          @if (cell.info && cell.info.hasData) {
+            @if (cell.info.hasPending) {
+              <div class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.4)]"></div>
+            } @else {
+              <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-rose-50 dark:bg-rose-900/10 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30 transition-colors">
+        <p class="text-[9px] font-bold text-rose-500 uppercase tracking-wider">A Pagar</p>
+        <p class="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 truncate">
+          {{ formatCurrency(monthlySummary().totalPending) }}
+        </p>
+      </div>
+
+      <div class="bg-emerald-50 dark:bg-emerald-900/10 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30 transition-colors">
+        <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">Pago</p>
+        <p class="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
+          {{ formatCurrency(monthlySummary().totalPaid) }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

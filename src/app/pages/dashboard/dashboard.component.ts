@@ -9,6 +9,7 @@ import { Transaction } from '@app/models/transaction.model';
 import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '@app/components/button/button.component';
+import { CalendarViewComponent } from '@app/components/calendar-view/calendar-view.component';
 
 type BatchActionType = 'delete' | 'edit' | 'pay';
 type BatchScope = 'single' | 'all' | 'future' | 'past';
@@ -22,15 +23,17 @@ interface PendingAction {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ChartComponent, ButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, ChartComponent, ButtonComponent, CalendarViewComponent],
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent {
   financeService = inject(FinanceService);
   fb = inject(FormBuilder);
 
+  @ViewChild(CalendarViewComponent) calendarComponent!: CalendarViewComponent;
+
   // --- UI State ---
-  activeModal = signal<'transaction' | 'settings' | 'batch-confirm' | null>(null);
+  activeModal = signal<'transaction' | 'settings' | 'batch-confirm' | 'calendar' | null>(null);
   settingsTab = signal<'preferences' | 'categories' | 'cards' | 'owners'>('preferences');
 
   editingTransactionId = signal<string | null>(null);
@@ -49,6 +52,7 @@ export class DashboardComponent {
   // Dashboard Context State
   selectedOwnerId = signal<string | null>(null); // New: Filter by Owner first
   selectedCardId = signal<string | null>(null);
+  selectedDay = signal<number | null>(null);
   statusFilter = signal<'all' | 'paid' | 'pending'>('all');
   sortConfig = signal<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
 
@@ -152,29 +156,45 @@ export class DashboardComponent {
     const { key, direction } = this.sortConfig();
     const query = this.searchQuery().toLowerCase().trim();
 
+    // --- NOVOS FILTROS ---
+    const dayFilter = this.selectedDay();
+    const currentMonth = this.selectedMonth();
+    const currentYear = this.selectedYear();
+
     const filtered = transaction.filter(t => {
       const currentCardId = this.selectedCardId();
       const currentOwnerId = this.selectedOwnerId();
       const currentStatus = this.statusFilter();
 
-      const dateMatch = t.effectiveMonth === this.selectedMonth() &&
-        t.effectiveYear === this.selectedYear();
-
+      // 1. Filtro de Mês e Ano (Sempre ativo)
+      const dateMatch = t.effectiveMonth === currentMonth &&
+        t.effectiveYear === currentYear;
       if (!dateMatch) return false;
 
+      // 2. FILTRO POR DIA (Ativado ao clicar no dia do calendário)
+      if (dayFilter) {
+        const tDate = new Date(t.purchaseDate);
+        // Comparamos o dia do mês (1-31)
+        if (tDate.getDate() !== dayFilter) return false;
+      }
+
+      // 3. Filtro de Cartão
       if (currentCardId) {
         const tCardId = t.creditCard?.id || t.cardId;
         if (tCardId !== currentCardId) return false;
       }
 
+      // 4. Filtro de Dono
       if (currentOwnerId) {
         const tOwnerId = t.owner?.id || t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
       }
 
+      // 5. Filtro de Status (Pago/Pendente)
       if (currentStatus === 'paid' && !t.paid) return false;
       if (currentStatus === 'pending' && t.paid) return false;
 
+      // 6. Busca por texto
       if (query) {
         const descText = t.description.toLowerCase();
         const catText = (t.category?.name || this.getCategoryName(t.categoryId)).toLowerCase();
@@ -190,8 +210,8 @@ export class DashboardComponent {
       return true;
     });
 
+    // --- ORDENAÇÃO ---
     return filtered.sort((a, b) => {
-
       if (key === 'description' || key === 'category') {
         const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId || a.category?.id).trim();
         const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId || b.category?.id).trim();
@@ -200,7 +220,6 @@ export class DashboardComponent {
         return direction === 'asc' ? comparison : -comparison;
       }
 
-      // Caso seja ordenação por NÚMERO ou DATA
       let numA: number;
       let numB: number;
 
@@ -208,7 +227,6 @@ export class DashboardComponent {
         numA = a.amount;
         numB = b.amount;
       } else {
-        // Default: Data (purchaseDate)
         numA = new Date(a.purchaseDate).getTime();
         numB = new Date(b.purchaseDate).getTime();
       }
@@ -216,8 +234,8 @@ export class DashboardComponent {
       if (numA < numB) return direction === 'asc' ? -1 : 1;
       if (numA > numB) return direction === 'asc' ? 1 : -1;
       return 0;
-    })
-  })
+    });
+  });
 
   // Helper to get cards for the sub-menu
   ownerCards = computed(() => {
@@ -619,8 +637,22 @@ export class DashboardComponent {
     });
   }
 
-  openModal(type: 'transaction' | 'settings' | 'batch-confirm', transactionToEdit: Transaction | null = null) {
+  openModal(type: 'transaction' | 'settings' | 'batch-confirm' | 'calendar', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
+
+    if (type === 'calendar') {
+      // 1. Sincroniza a data inicial (Mês que o Dashboard está exibindo)
+      const syncDate = new Date(this.selectedYear(), this.selectedMonth(), 1);
+
+      setTimeout(() => {
+        if (this.calendarComponent) {
+          this.calendarComponent.viewDate.set(syncDate);
+          // 2. Manda o calendário buscar os próprios dados
+          this.calendarComponent.loadCalendarData();
+        }
+      }, 10);
+      return;
+    }
 
     // Tratamento específico para Settings
     if (type === 'settings') {
@@ -703,8 +735,15 @@ export class DashboardComponent {
     if (m > 11) { m = 0; y++; }
     else if (m < 0) { m = 11; y--; }
 
+    // 1. Atualiza mês e ano
     this.selectedMonth.set(m);
     this.selectedYear.set(y);
+
+    // 2. RESET DO DIA: Ao mudar de mês pelas setas, 
+    // queremos ver todos os lançamentos do mês novo.
+    this.selectedDay.set(null);
+
+    // 3. Carrega os dados globais para o Dashboard
     this.financeService.loadByMonth(m, y);
   }
 
@@ -790,5 +829,26 @@ export class DashboardComponent {
     if (!owner.id) return;
     this.editingOwnerId.set(owner.id);
     this.ownerForm.patchValue({ name: owner.name });
+  }
+
+  onDashboardCalendarSelect(date: Date) {
+    // 1. Atualiza os signals de contexto
+    this.selectedMonth.set(date.getMonth());
+    this.selectedYear.set(date.getFullYear());
+    this.selectedDay.set(date.getDate()); // Ativa o filtro do dia específico
+
+    // 2. Limpa a busca por texto para evitar confusão no filtro
+    this.searchQuery.set('');
+    this.isSearchOpen.set(false);
+
+    // 3. Recarrega os dados do mês no service global
+    this.financeService.loadByMonth(date.getMonth(), date.getFullYear());
+
+    // 4. Fecha o modal
+    this.closeModal();
+  }
+  
+  clearDayFilter() {
+    this.selectedDay.set(null);
   }
 }

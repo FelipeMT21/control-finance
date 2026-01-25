@@ -25,8 +25,8 @@ export class FinanceService {
   private readonly API_URL_CARDS = `${this.BASE_URL}/cards`;
 
   // --- CONTROLE DE ESTADO DO FILTRO ---
-  private lastViewedMonth = new Date().getMonth(); //
-  private lastViewedYear = new Date().getFullYear(); //
+  private lastViewedMonth = new Date().getMonth();
+  private lastViewedYear = new Date().getFullYear();
 
   // --- STATE ---
 
@@ -75,7 +75,7 @@ export class FinanceService {
       // 2. Normalização de Enum
       type: t.type.toLowerCase() as TransactionType,
 
-      // 3. Mapeamento do novo campo PAID (Importante!)
+      // 3. Mapeamento do novo campo PAID
       // Se vier null do banco antigo, assume false
       paid: t.paid ?? false,
 
@@ -232,6 +232,19 @@ export class FinanceService {
       },
       error: (err) => console.error('Erro ao filtrar:', err)
     });
+  }
+
+  fetchTransactionsSilently(month: number, year: number): Observable<Transaction[]> {
+    const javaMonth = month + 1;
+    return this.http.get<any[]>(`${this.API_URL}/filter`, {
+      params: { month: javaMonth.toString(), year: year.toString() }
+    }).pipe(
+      map(data => data.map(t => this.mapTransaction(t))),
+      catchError(err => {
+        console.error('Erro na busca silenciosa do calendário:', err);
+        return throwError(() => err);
+      })
+    );
   }
 
   addTransaction(
