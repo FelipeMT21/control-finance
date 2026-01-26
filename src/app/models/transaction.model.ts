@@ -4,6 +4,9 @@ import { Owner } from "./owner.model";
 
 export type TransactionType = 'income' | 'expense';
 
+// ✅ NOVO: Define os valores exatos que vêm do Java
+export type PaymentMethod = 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'CASH' | 'DEBIT_CARD';
+
 export interface Transaction {
     id?: string; // UUID from backend
     description: string;
@@ -12,6 +15,7 @@ export interface Transaction {
     purchaseDate: string;
     billingDate: string;
     paid: boolean;
+    paymentMethod?: PaymentMethod;
 
     // Objetos completos vindo do Java (JPA)
     category: Category;

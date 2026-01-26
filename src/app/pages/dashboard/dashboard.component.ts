@@ -100,22 +100,31 @@ export class DashboardComponent {
       date: [this.getISODate(this.today), Validators.required],
       ownerId: [this.financeService.owners()[0]?.id || '', Validators.required],
       categoryId: [this.financeService.categories()[0]?.id || '', Validators.required],
+
+      // NOVOS CAMPOS:
+      useCard: [false],
       cardId: [this.financeService.cards()[0]?.id || ''],
+      paymentMethod: ['PIX'], // Valor padrão inicial
+
       installments: [1]
     });
 
     // Observa mudanças no tipo (Receita/Despesa)
-    this.transactionForm.get('type')?.valueChanges.subscribe(val => {
-      if (val === 'income') this.useCard.set(false);
-    });
+    this.transactionForm.get('useCard')?.valueChanges.subscribe(val => {
+      this.useCard.set(val); // <--- Atualiza o sinal para o HTML mostrar/esconder o select
 
-    // Observa mudança de cartão para setar o dono automaticamente
-    this.transactionForm.get('cardId')?.valueChanges.subscribe(cardId => {
-      if (this.useCard() && cardId) {
-        const card = this.financeService.getCard(cardId);
-        if (card) {
-          this.transactionForm.patchValue({ ownerId: card.owner.id }, { emitEvent: false });
-        }
+      if (val) {
+        // Se ligou o cartão: Define método como Crédito
+        this.transactionForm.patchValue({
+          paymentMethod: 'CREDIT_CARD',
+          cardId: this.financeService.cards()[0]?.id || ''
+        });
+      } else {
+        // Se desligou: Volta para Pix e limpa o cartão
+        this.transactionForm.patchValue({
+          paymentMethod: 'PIX',
+          cardId: null
+        });
       }
     });
 
@@ -477,12 +486,36 @@ export class DashboardComponent {
 
     const val = this.transactionForm.value;
     const isExpense = val.type === 'expense';
-    const usingCard = isExpense && this.useCard();
+    const usingCard = isExpense && val.useCard;
+
+    // 1. Define o Método de Pagamento
+    const finalPaymentMethod = usingCard ? 'CREDIT_CARD' : (val.paymentMethod || 'PIX');
+
+    // 2. REGRA DE OURO: Define se nasce Pago ou Pendente
+    // Se for Pix, Dinheiro ou Débito, é pagamento imediato (TRUE).
+    // Se for Cartão de Crédito ou Boleto, é pagamento futuro (FALSE).
+    // Se for Receita (Income), vamos assumir que entrou o dinheiro (TRUE), mas você pode mudar.
+    let isPaidAutomatic = false;
+
+    if (!isExpense) {
+      isPaidAutomatic = true; // Receitas entram como pagas
+    } else {
+      const immediateMethods = ['PIX', 'CASH', 'DEBIT_CARD'];
+      if (immediateMethods.includes(finalPaymentMethod)) {
+        isPaidAutomatic = true;
+      } else {
+        isPaidAutomatic = false; // Crédito e Boleto
+      }
+    }
+
     const editId = this.editingTransactionId();
     const scope = this.batchEditScope();
 
     if (editId) {
       // --- UPDATE LOGIC ---
+      // Na edição, geralmente mantemos o status que já estava. 
+      // Vou manter o padrão de não mexer no 'paid' na edição para não sobrescrever algo que foi marcado manualmente.
+
       const updatePayload: Partial<Transaction> = {
         description: val.description,
         amount: val.amount,
@@ -492,11 +525,11 @@ export class DashboardComponent {
         owner: { id: val.ownerId } as any,
         categoryId: val.categoryId,
         cardId: usingCard ? val.cardId : null,
-        ownerId: val.ownerId
+        ownerId: val.ownerId,
+        paymentMethod: finalPaymentMethod as any
       };
 
       if (!scope || scope === 'single') {
-        // Single Update
         this.financeService.updateTransaction(editId, updatePayload).subscribe({
           next: () => {
             this.closeModal();
@@ -505,36 +538,27 @@ export class DashboardComponent {
           error: (err) => alert('Erro ao atualizar: ' + err.message)
         });
       } else {
-        // --- BATCH UPDATE LOGIC ---
+        // Batch Logic... (código já existente)
         const original = this.financeService.transactions().find(t => t.id === editId);
-
         if (original && original.groupId) {
           this.financeService.fetchGroup(original.groupId).subscribe(groupTransactions => {
-
             const currentIndex = groupTransactions.findIndex(t => t.id === original.id);
             let targetTransactions: Transaction[] = [];
-
-            // 1. Define o escopo das parcelas afetadas
             if (scope === 'all') targetTransactions = groupTransactions;
             else if (scope === 'future') targetTransactions = groupTransactions.slice(currentIndex);
             else if (scope === 'past') targetTransactions = groupTransactions.slice(0, currentIndex + 1);
 
-            // 2. Cria as requisições filtrando apenas quem tem ID válido
             const requests = targetTransactions
-              .filter((t): t is Transaction & { id: string } => !!t.id) // Type Guard
+              .filter((t): t is Transaction & { id: string } => !!t.id)
               .map(t => {
                 const batchPayload = { ...updatePayload };
-                // Manter os dados que não devem mudar em lote (específicos de cada parcela)
                 batchPayload.purchaseDate = t.purchaseDate;
                 batchPayload.description = t.description;
-                // Atualizamos o que foi solicitado (como o valor total/parcela)
                 batchPayload.amount = val.amount;
                 return this.financeService.updateTransaction(t.id, batchPayload);
               });
 
             if (requests.length === 0) return;
-
-            // 3. Orquestra a atualização paralela
             forkJoin(requests).subscribe({
               next: () => {
                 this.closeModal();
@@ -547,7 +571,7 @@ export class DashboardComponent {
       }
 
     } else {
-      // --- CREATE LOGIC ---
+      // --- CREATE LOGIC (AQUI MUDA) ---
       const numInstallments = isExpense ? Number(val.installments) : 1;
 
       this.financeService.addTransaction(
@@ -558,7 +582,9 @@ export class DashboardComponent {
         val.categoryId,
         val.ownerId,
         usingCard ? val.cardId : null,
-        numInstallments
+        numInstallments,
+        finalPaymentMethod,
+        isPaidAutomatic // <--- 10º ARGUMENTO: Enviando a regra automática
       ).subscribe({
         next: () => {
           this.closeModal();
@@ -640,21 +666,19 @@ export class DashboardComponent {
   openModal(type: 'transaction' | 'settings' | 'batch-confirm' | 'calendar', transactionToEdit: Transaction | null = null) {
     this.activeModal.set(type);
 
+    // 1. Lógica do Calendário
     if (type === 'calendar') {
-      // 1. Sincroniza a data inicial (Mês que o Dashboard está exibindo)
       const syncDate = new Date(this.selectedYear(), this.selectedMonth(), 1);
-
       setTimeout(() => {
         if (this.calendarComponent) {
           this.calendarComponent.viewDate.set(syncDate);
-          // 2. Manda o calendário buscar os próprios dados
           this.calendarComponent.loadCalendarData();
         }
       }, 10);
       return;
     }
 
-    // Tratamento específico para Settings
+    // 2. Lógica de Configurações
     if (type === 'settings') {
       this.cancelOwnerEdit();
       this.cancelCardEdit();
@@ -664,20 +688,30 @@ export class DashboardComponent {
       return;
     }
 
-    // Se não for transação, não precisa rodar o código abaixo
+    // Se não for transação, para por aqui
     if (type !== 'transaction') return;
 
-    // Lógica para EDIÇÃO
+    // --- LÓGICA DE EDIÇÃO (EXISTE ID) ---
     if (transactionToEdit?.id) {
       this.editingTransactionId.set(transactionToEdit.id);
 
+      // A. Extração de IDs
       const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId || '';
       const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId || '';
       const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId || '';
 
-      this.useCard.set(!!tCardId);
+      // B. Definição de Variáveis Auxiliares (AQUI ESTÁ O HASCARD)
+      const hasCard = !!tCardId; // True se tiver ID, False se for vazio
+
+      // C. Atualiza o Signal Visual
+      this.useCard.set(hasCard);
       this.customInstallmentMode.set((transactionToEdit.installmentTotal || 1) > 24);
 
+      // D. Define o Método de Pagamento
+      // Se veio do banco, usa. Se não, infere: Tem cartão? Crédito. Não tem? Pix.
+      const currentMethod = transactionToEdit.paymentMethod || (hasCard ? 'CREDIT_CARD' : 'PIX');
+
+      // E. Preenche o Formulário
       this.transactionForm.setValue({
         description: transactionToEdit.description || '',
         amount: transactionToEdit.amount || 0,
@@ -685,15 +719,22 @@ export class DashboardComponent {
         date: transactionToEdit.purchaseDate ? transactionToEdit.purchaseDate.split('T')[0] : '',
         ownerId: tOwnerId,
         categoryId: tCatId,
+
+        // Campos Novos
+        useCard: hasCard, // Usa a variável criada acima
         cardId: tCardId,
-        installments: 1
+        paymentMethod: currentMethod,
+
+        installments: transactionToEdit.installmentTotal || 1
       });
     }
-    // Lógica para NOVO CADASTRO
+    // --- LÓGICA DE NOVO CADASTRO (NÃO EXISTE HASCARD AQUI) ---
     else {
       this.editingTransactionId.set(null);
       this.batchEditScope.set(null);
       this.customInstallmentMode.set(false);
+
+      // Reseta para desligado (False)
       this.useCard.set(false);
 
       this.transactionForm.reset({
@@ -702,6 +743,10 @@ export class DashboardComponent {
         ownerId: this.financeService.owners()[0]?.id || '',
         categoryId: this.financeService.categories()[0]?.id || '',
         cardId: this.financeService.cards()[0]?.id || '',
+
+        // Padrões Iniciais
+        useCard: false, // Aqui usamos false direto
+        paymentMethod: 'PIX',
         installments: 1
       });
     }
@@ -714,10 +759,6 @@ export class DashboardComponent {
     this.editingCardId.set(null);
     this.pendingAction.set(null);
     this.batchEditScope.set(null);
-  }
-
-  toggleUseCard() {
-    this.useCard.update(v => !v);
   }
 
   onInstallmentChange(event: Event) {
@@ -847,7 +888,7 @@ export class DashboardComponent {
     // 4. Fecha o modal
     this.closeModal();
   }
-  
+
   clearDayFilter() {
     this.selectedDay.set(null);
   }

@@ -66,32 +66,32 @@ export class FinanceService {
   // --- MÉTODOS DE MAPEAMENTO CENTRALIZADO (O "Tradutor") ---
 
   private mapTransaction(t: any): Transaction {
-    // 1. Data de referência (Prioridade para billingDate no Dashboard)
+    // Data de referência (Prioridade para billingDate no Dashboard)
     const dateRef = new Date(t.billingDate || t.purchaseDate);
 
     return {
-      ...t, // Copia campos simples (id, description, amount)
-
-      // 2. Normalização de Enum
+      ...t,
       type: t.type.toLowerCase() as TransactionType,
 
-      // 3. Mapeamento do novo campo PAID
       // Se vier null do banco antigo, assume false
       paid: t.paid ?? false,
 
-      // 4. Flattening de Objetos para IDs
+      // Flattening de Objetos para IDs
       categoryId: t.category?.id || '',
       ownerId: t.owner?.id || '',
       cardId: t.creditCard?.id || null,
 
-      // 5. Metadados Calculados
+      // Metadados Calculados
       effectiveMonth: dateRef.getUTCMonth(),
       effectiveYear: dateRef.getUTCFullYear(),
 
-      // 6. Fallbacks
+      // Fallbacks
+      billingDate: t.billingDate,
+      purchaseDate: t.purchaseDate,
+
       installmentCurrent: t.installmentCurrent || 1,
       installmentTotal: t.installmentTotal || 1,
-      billingDate: t.billingDate || t.purchaseDate
+
     } as Transaction;
   }
 
@@ -255,7 +255,9 @@ export class FinanceService {
     categoryId: string,
     ownerId: string,
     cardId: string | null,
-    installments: number
+    installments: number,
+    paymentMethod: string,
+    paid: boolean
   ): Observable<any> {
     // 1. Desmontando a data original
     const [yStr, mStr, dStr] = dateStr.split('-');
@@ -294,11 +296,16 @@ export class FinanceService {
         category: { id: categoryId },
         owner: { id: ownerId },
         creditCard: (type === 'expense' && cardId) ? { id: cardId } : null, // Envia objeto ou null
-        groupId: groupId
+        
+        paymentMethod: paymentMethod, // <--- 2. ENVIANDO PARA O JAVA
+        
+        groupId: groupId,
+
+        paid: paid
       };
 
       //Teste log Installments
-      console.log(`Parcela ${i + 1}: Intenção dia ${day} -> Gerado: ${formattedDate}`);
+      console.log(`Parcela ${i + 1}: Intenção dia ${day} -> Gerado: ${formattedDate} | Método: ${paymentMethod}`);
 
       requests.push(this.http.post(this.API_URL, payload));
     }
