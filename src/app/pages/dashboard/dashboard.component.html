@@ -78,9 +78,7 @@
 
             <!-- Owners Buttons -->
             @for (owner of financeService.owners(); track owner.id) {
-            <app-button
-            [isActive]="selectedOwnerId() === owner.id" 
-            (clicked)="selectOwnerFilter(owner.id || null)">
+            <app-button [isActive]="selectedOwnerId() === owner.id" (clicked)="selectOwnerFilter(owner.id || null)">
               {{ owner.name }}
             </app-button>
             }
@@ -109,6 +107,17 @@
         <!-- Month Navigation -->
         <div
           class="flex items-center bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 px-1 py-1 self-end lg:self-auto ml-auto">
+
+          <button (click)="openModal('calendar')"
+            class="p-2 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer active:scale-90"
+            title="Abrir Calendário">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+
           <button (click)="changeMonth(-1)"
             class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors dark:hover:text-indigo-400 cursor-pointer active:scale-90">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -254,7 +263,36 @@
       </div>
 
       <!-- Right Column: Transactions List -->
+
       <div class="lg:col-span-2">
+
+        @if (selectedDay()) {
+        <div
+          class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-xl mb-6 animate-in slide-in-from-top-2">
+          <div class="flex items-center gap-3">
+            <div class="bg-indigo-500 p-2 rounded-lg text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-indigo-900 dark:text-indigo-100">
+                Filtrando pelo dia {{ selectedDay() }}
+              </h4>
+              <p class="text-xs text-indigo-600 dark:text-indigo-400">
+                Apenas transações que fecham ou ocorrem nesta data.
+              </p>
+            </div>
+          </div>
+
+          <button (click)="clearDayFilter()"
+            class="px-4 py-2 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-lg shadow-sm border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer">
+            Limpar Filtro
+          </button>
+        </div>
+        }
         <div
           class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full">
           <div
@@ -594,7 +632,8 @@
           <button (click)="executeBatchAction('all')"
             [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'"
             class="w-full py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm">
-            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId) +
+            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId ||
+            pendingAction()?.transaction?.creditCard?.id) +
             ')' : 'Todas as parcelas' }}
           </button>
         </div>
@@ -721,205 +760,411 @@
         <div
           class="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-1">
 
-          <div class="grid grid-cols-2 gap-4 items-end">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pagamento</label>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                Modo de Pagamento
+              </label>
               <label
-                class="flex items-center gap-3 cursor-pointer p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
+                class="flex items-center gap-3 cursor-pointer p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors h-[42px]">
                 <div class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" [checked]="useCard()" (change)="toggleUseCard()" class="sr-only peer">
+                  <input type="checkbox" formControlName="useCard" class="sr-only peer">
                   <div
-                    class="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full">
+                    class="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
                   </div>
                 </div>
-                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Usar Cartão?</span>
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300 select-none">
+                  {{ useCard() ? 'Usar Cartão de Crédito' : 'Outros (Pix, Boleto...)' }}
+                </span>
               </label>
             </div>
 
-            @if (!editingTransactionId()) {
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Repetir / Parcelar</label>
-
-              @if (!customInstallmentMode()) {
-              <div class="flex gap-2">
-                <select (change)="onInstallmentChange($event)" formControlName="installments"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:border-indigo-500">
-                  @for (i of installmentOptions; track i) {
-                  <option [value]="i">{{ i === 1 ? 'À vista' : i + 'x' }}</option>
-                  }
-                  <option value="0" class="font-bold text-indigo-600">Outro (Digitar)...</option>
-                </select>
-              </div>
+            <div>
+              @if (useCard()) {
+              <label class="block text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase mb-1">
+                Selecione o Cartão
+              </label>
+              <select formControlName="cardId"
+                class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-indigo-700 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white transition-all">
+                @for (card of financeService.cards(); track card.id) {
+                <option [value]="card.id">{{ card.name }} {{ card.owner.name }} (Fecha dia {{ card.closingDay }})</option>
+                }
+              </select>
               } @else {
-              <div class="flex gap-2">
-                <input type="number" min="1" formControlName="installments"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:border-indigo-500"
-                  placeholder="Qtd">
-                <button type="button" (click)="customInstallmentMode.set(false)"
-                  class="px-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-                  title="Voltar para lista">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              </div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                Tipo de Pagamento
+              </label>
+              <select formControlName="paymentMethod"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white transition-all">
+                <option value="PIX">Pix / Dinheiro / Débito</option>
+                <option value="BOLETO">Boleto Bancário</option>
+              </select>
               }
+            </div>
+          </div>
+
+          @if (!editingTransactionId()) {
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+              Parcelamento / Repetição
+            </label>
+
+            @if (!customInstallmentMode()) {
+            <div class="flex gap-2">
+              <select (change)="onInstallmentChange($event)" formControlName="installments"
+                class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:border-indigo-500">
+                @for (i of installmentOptions; track i) {
+                <option [value]="i">{{ i === 1 ? 'À vista (1x)' : i + 'x Parcelas' }}</option>
+                }
+                <option value="0" class="font-bold text-indigo-600">Outro (Digitar)...</option>
+              </select>
+            </div>
+            } @else {
+            <div class="flex gap-2 animate-in fade-in">
+              <input type="number" min="1" formControlName="installments"
+                class="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:border-indigo-500"
+                placeholder="Qtd Parcelas">
+              <button type="button" (click)="customInstallmentMode.set(false)"
+                class="px-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+                title="Voltar para lista">
+                Voltar
+              </button>
             </div>
             }
           </div>
-
-          @if (useCard()) {
-          <div
-            class="p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800 animate-in zoom-in-95">
-            <label class="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2">Selecione o
-              Cartão</label>
-            <select formControlName="cardId"
-              class="w-full px-3 py-2 text-sm rounded-lg border border-indigo-200 dark:border-indigo-700 outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
-              @for (card of financeService.cards(); track card.id) {
-              <option [value]="card.id">{{ card.name }} (Fecha dia {{ card.closingDay }})</option>
-              }
-            </select>
-          </div>
           }
+
         </div>
         }
-        <div class="pt-4 flex gap-3">
-          <button type="button" (click)="closeModal()"
-            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors cursor-pointer active:scale-90">Cancelar</button>
-          <button type="submit" [disabled]="transactionForm.invalid"
-            class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer active:scale-90">
-            Salvar
-          </button>
-        </div>
-      </form>
+
+    <div class="pt-4 flex gap-3">
+      <button type="button" (click)="closeModal()"
+        class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors cursor-pointer active:scale-90">Cancelar</button>
+      <button type="submit" [disabled]="transactionForm.invalid"
+        class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer active:scale-90">
+        Salvar
+      </button>
     </div>
+    </form>
   </div>
-  }
+</div>
+}
 
-  <!-- SETTINGS MODAL -->
-  @if (activeModal() === 'settings') {
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+<!-- SETTINGS MODAL -->
+@if (activeModal() === 'settings') {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
 
+  <div
+    class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl h-[600px] flex flex-col relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+    <!-- Header -->
     <div
-      class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl h-[600px] flex flex-col relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
-      <!-- Header -->
-      <div
-        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800 shrink-0">
-        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Gerenciar Cadastros</h2>
-        <button (click)="closeModal()"
-          class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+      class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800 shrink-0">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Gerenciar Cadastros</h2>
+      <button (click)="closeModal()"
+        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex border-b border-slate-200 dark:border-slate-700 shrink-0">
+      <button (click)="settingsTab.set('preferences')"
+        class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+        [class]="settingsTab() === 'preferences' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        Geral
+      </button>
+      <button (click)="settingsTab.set('categories')"
+        class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+        [class]="settingsTab() === 'categories' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        Categorias
+      </button>
+      <button (click)="settingsTab.set('cards')" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+        [class]="settingsTab() === 'cards' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        Cartões
+      </button>
+      <button (click)="settingsTab.set('owners')" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+        [class]="settingsTab() === 'owners' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        Donos
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 overflow-auto p-6 bg-slate-50/30 dark:bg-slate-900/30">
+
+      <!-- PREFERENCES TAB -->
+      @if (settingsTab() === 'preferences') {
+      <div class="space-y-6">
+        <div
+          class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Mês Financeiro
+          </h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            Defina o dia de início do seu mês financeiro. A Visão Geral exibirá movimentações a partir deste dia até o
+            dia anterior do mês seguinte.
+          </p>
+
+          <form [formGroup]="preferencesForm" class="flex items-end gap-4" (change)="onSavePreferences()">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dia de Início</label>
+              <input type="number" min="1" max="31" formControlName="monthStartDay"
+                class="w-24 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+            </div>
+            <div
+              class="text-sm text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-lg border border-indigo-100 dark:border-indigo-800 mb-0.5">
+              @if (preferencesForm.value.monthStartDay === 1) {
+              O mês começa dia 1 e termina no último dia do mês.
+              } @else {
+              Período: Dia {{ preferencesForm.value.monthStartDay }} até dia {{ preferencesForm.value.monthStartDay -
+              1 }} do próximo mês.
+              }
+            </div>
+          </form>
+        </div>
       </div>
+      }
 
-      <!-- Tabs -->
-      <div class="flex border-b border-slate-200 dark:border-slate-700 shrink-0">
-        <button (click)="settingsTab.set('preferences')"
-          class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
-          [class]="settingsTab() === 'preferences' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
-          Geral
-        </button>
-        <button (click)="settingsTab.set('categories')"
-          class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
-          [class]="settingsTab() === 'categories' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
-          Categorias
-        </button>
-        <button (click)="settingsTab.set('cards')" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
-          [class]="settingsTab() === 'cards' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
-          Cartões
-        </button>
-        <button (click)="settingsTab.set('owners')" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
-          [class]="settingsTab() === 'owners' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'">
-          Donos
-        </button>
-      </div>
+      <!-- CATEGORIES TAB -->
+      @if (settingsTab() === 'categories') {
+      <div class="space-y-6">
 
-      <!-- Body -->
-      <div class="flex-1 overflow-auto p-6 bg-slate-50/30 dark:bg-slate-900/30">
+        <!-- Add Category Form -->
+        <form [formGroup]="categoryForm" (ngSubmit)="onAddCategory()"
+          class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div class="flex-1 space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Nome da
+              Categoria</label>
+            <input type="text" formControlName="name" placeholder="Ex: Investimentos"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor</label>
+            <div class="flex items-center">
+              <input type="color" formControlName="color"
+                class="h-10 w-14 rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
+            </div>
+          </div>
+          <button type="submit" [disabled]="categoryForm.invalid"
+            class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+            Adicionar
+          </button>
+        </form>
 
-        <!-- PREFERENCES TAB -->
-        @if (settingsTab() === 'preferences') {
-        <div class="space-y-6">
-          <div
-            class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-            <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none"
-                viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Mês Financeiro
-            </h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Defina o dia de início do seu mês financeiro. A Visão Geral exibirá movimentações a partir deste dia até o
-              dia anterior do mês seguinte.
-            </p>
-
-            <form [formGroup]="preferencesForm" class="flex items-end gap-4" (change)="onSavePreferences()">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dia de Início</label>
-                <input type="number" min="1" max="31" formControlName="monthStartDay"
-                  class="w-24 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+        <!-- List -->
+        <div class="space-y-2">
+          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Categorias
+            Existentes</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @for (cat of financeService.categories(); track cat.id) {
+            <div
+              class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
+              <div class="flex items-center gap-3">
+                <div class="w-4 h-4 rounded-full shadow-sm" [style.backgroundColor]="cat.color"></div>
+                <span class="font-medium text-slate-700 dark:text-slate-200">{{ cat.name }}</span>
               </div>
-              <div
-                class="text-sm text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-lg border border-indigo-100 dark:border-indigo-800 mb-0.5">
-                @if (preferencesForm.value.monthStartDay === 1) {
-                O mês começa dia 1 e termina no último dia do mês.
-                } @else {
-                Período: Dia {{ preferencesForm.value.monthStartDay }} até dia {{ preferencesForm.value.monthStartDay -
-                1 }} do próximo mês.
-                }
-              </div>
-            </form>
+              <button (click)="financeService.deleteCategory(cat.id!)"
+                class="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+            }
           </div>
         </div>
-        }
+      </div>
+      }
 
-        <!-- CATEGORIES TAB -->
-        @if (settingsTab() === 'categories') {
-        <div class="space-y-6">
-
-          <!-- Add Category Form -->
-          <form [formGroup]="categoryForm" (ngSubmit)="onAddCategory()"
-            class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div class="flex-1 space-y-1">
-              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Nome da
-                Categoria</label>
-              <input type="text" formControlName="name" placeholder="Ex: Investimentos"
+      <!-- CARDS TAB -->
+      @if (settingsTab() === 'cards') {
+      <div class="space-y-6">
+        <!-- Add Card Form -->
+        <form [formGroup]="cardForm" (ngSubmit)="onSaveCard()"
+          class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2 sm:col-span-1 space-y-1">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                @if (editingCardId()) {
+                Editando Cartão
+                } @else {
+                Nome do Cartão
+                }
+              </label>
+              <input type="text" formControlName="name" placeholder="Ex: Black Card"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+            </div>
+            <div class="col-span-2 sm:col-span-1 space-y-1">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dono</label>
+              <select formControlName="ownerId"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+                @for (owner of financeService.owners(); track owner.id) {
+                <option [value]="owner.id">{{ owner.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Fechamento</label>
+              <input type="number" min="1" max="31" formControlName="closingDay"
                 class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
             </div>
             <div class="space-y-1">
-              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor</label>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Vencimento</label>
+              <input type="number" min="1" max="31" formControlName="dueDay"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor do Cartão</label>
               <div class="flex items-center">
                 <input type="color" formControlName="color"
-                  class="h-10 w-14 rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
+                  class="h-[42px] w-full rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
               </div>
             </div>
-            <button type="submit" [disabled]="categoryForm.invalid"
-              class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
-              Adicionar
+          </div>
+          <div class="flex justify-end gap-2">
+            @if (editingCardId()) {
+            <button type="button" (click)="cancelCardEdit()"
+              class="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
+              Cancelar
             </button>
-          </form>
+            }
+            <button type="submit" [disabled]="cardForm.invalid"
+              class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+              @if (editingCardId()) {
+              Salvar Alterações
+              } @else {
+              Adicionar Cartão
+              }
+            </button>
+          </div>
+        </form>
 
-          <!-- List -->
-          <div class="space-y-2">
-            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Categorias
-              Existentes</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              @for (cat of financeService.categories(); track cat.id) {
-              <div
-                class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
-                <div class="flex items-center gap-3">
-                  <div class="w-4 h-4 rounded-full shadow-sm" [style.backgroundColor]="cat.color"></div>
-                  <span class="font-medium text-slate-700 dark:text-slate-200">{{ cat.name }}</span>
+        <!-- List -->
+        <div class="space-y-2">
+          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Cartões
+            Cadastrados</h3>
+          <div class="grid grid-cols-1 gap-3">
+            @for (card of financeService.cards(); track card.id) {
+            <div
+              class="relative overflow-hidden p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-white shadow-md group transition-all"
+              [style.backgroundColor]="card.color">
+              <div class="flex justify-between items-start relative z-10">
+                <div>
+                  <p class="font-bold text-lg tracking-wide drop-shadow-sm">{{ card.name }}</p>
+                  <p class="text-xs opacity-90 uppercase tracking-wider font-medium">{{ card.owner.name }}</p>
                 </div>
-                <button (click)="financeService.deleteCategory(cat.id!)"
-                  class="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all p-1">
+                <div class="flex items-center gap-1">
+                  <button (click)="editCard(card)" class="text-white/60 hover:text-white transition-colors p-1"
+                    title="Editar">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button (click)="financeService.deleteCard(card.id!)"
+                    class="text-white/60 hover:text-white transition-colors p-1" title="Excluir">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="mt-4 flex gap-6 relative z-10">
+                <div>
+                  <p class="text-[10px] opacity-75 uppercase">Fechamento</p>
+                  <p class="font-mono text-sm font-semibold">Dia {{ card.closingDay }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] opacity-75 uppercase">Vencimento</p>
+                  <p class="font-mono text-sm font-semibold">Dia {{ card.dueDay }}</p>
+                </div>
+              </div>
+              <!-- Decorative Circle -->
+              <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/20 rounded-full blur-xl"></div>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+      }
+
+      <!-- OWNERS TAB -->
+      @if (settingsTab() === 'owners') {
+      <div class="space-y-6">
+
+        <!-- Add Owner Form -->
+        <form [formGroup]="ownerForm" (ngSubmit)="onSaveOwner()"
+          class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div class="flex-1 space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+              @if (editingOwnerId()) {
+              Editar Dono / Responsável
+              } @else {
+              Nome do Dono / Responsável
+              }
+            </label>
+            <input type="text" formControlName="name" placeholder="Ex: João Silva"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
+          </div>
+
+          @if (editingOwnerId()) {
+          <button type="button" (click)="cancelOwnerEdit()"
+            class="h-10 px-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
+            Cancelar
+          </button>
+          }
+
+          <button type="submit" [disabled]="ownerForm.invalid"
+            class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
+            @if (editingOwnerId()) {
+            Salvar
+            } @else {
+            Adicionar
+            }
+          </button>
+        </form>
+
+        <!-- List -->
+        <div class="space-y-2">
+          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Pessoas
+            Cadastradas</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @for (owner of financeService.owners(); track owner.id) {
+            <div
+              class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-xs">
+                  {{ owner.name.charAt(0).toUpperCase() }}
+                </div>
+                <span class="font-medium text-slate-700 dark:text-slate-200">{{ owner.name }}</span>
+              </div>
+
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button (click)="editOwner(owner)"
+                  class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1" title="Editar">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button (click)="owner.id ? financeService.deleteOwner(owner.id) : null"
+                  class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1" title="Excluir">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -927,209 +1172,28 @@
                   </svg>
                 </button>
               </div>
-              }
             </div>
-          </div>
-        </div>
-        }
-
-        <!-- CARDS TAB -->
-        @if (settingsTab() === 'cards') {
-        <div class="space-y-6">
-          <!-- Add Card Form -->
-          <form [formGroup]="cardForm" (ngSubmit)="onSaveCard()"
-            class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2 sm:col-span-1 space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  @if (editingCardId()) {
-                  Editando Cartão
-                  } @else {
-                  Nome do Cartão
-                  }
-                </label>
-                <input type="text" formControlName="name" placeholder="Ex: Black Card"
-                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
-              </div>
-              <div class="col-span-2 sm:col-span-1 space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dono</label>
-                <select formControlName="ownerId"
-                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
-                  @for (owner of financeService.owners(); track owner.id) {
-                  <option [value]="owner.id">{{ owner.name }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-            <div class="grid grid-cols-3 gap-4">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Fechamento</label>
-                <input type="number" min="1" max="31" formControlName="closingDay"
-                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Vencimento</label>
-                <input type="number" min="1" max="31" formControlName="dueDay"
-                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cor do Cartão</label>
-                <div class="flex items-center">
-                  <input type="color" formControlName="color"
-                    class="h-[42px] w-full rounded cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-white dark:bg-slate-900">
-                </div>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2">
-              @if (editingCardId()) {
-              <button type="button" (click)="cancelCardEdit()"
-                class="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
-                Cancelar
-              </button>
-              }
-              <button type="submit" [disabled]="cardForm.invalid"
-                class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
-                @if (editingCardId()) {
-                Salvar Alterações
-                } @else {
-                Adicionar Cartão
-                }
-              </button>
-            </div>
-          </form>
-
-          <!-- List -->
-          <div class="space-y-2">
-            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Cartões
-              Cadastrados</h3>
-            <div class="grid grid-cols-1 gap-3">
-              @for (card of financeService.cards(); track card.id) {
-              <div
-                class="relative overflow-hidden p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-white shadow-md group transition-all"
-                [style.backgroundColor]="card.color">
-                <div class="flex justify-between items-start relative z-10">
-                  <div>
-                    <p class="font-bold text-lg tracking-wide drop-shadow-sm">{{ card.name }}</p>
-                    <p class="text-xs opacity-90 uppercase tracking-wider font-medium">{{ card.owner.name }}</p>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <button (click)="editCard(card)" class="text-white/60 hover:text-white transition-colors p-1"
-                      title="Editar">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button (click)="financeService.deleteCard(card.id!)"
-                      class="text-white/60 hover:text-white transition-colors p-1" title="Excluir">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="mt-4 flex gap-6 relative z-10">
-                  <div>
-                    <p class="text-[10px] opacity-75 uppercase">Fechamento</p>
-                    <p class="font-mono text-sm font-semibold">Dia {{ card.closingDay }}</p>
-                  </div>
-                  <div>
-                    <p class="text-[10px] opacity-75 uppercase">Vencimento</p>
-                    <p class="font-mono text-sm font-semibold">Dia {{ card.dueDay }}</p>
-                  </div>
-                </div>
-                <!-- Decorative Circle -->
-                <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/20 rounded-full blur-xl"></div>
-              </div>
-              }
-            </div>
-          </div>
-        </div>
-        }
-
-        <!-- OWNERS TAB -->
-        @if (settingsTab() === 'owners') {
-        <div class="space-y-6">
-
-          <!-- Add Owner Form -->
-          <form [formGroup]="ownerForm" (ngSubmit)="onSaveOwner()"
-            class="flex gap-3 items-end bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div class="flex-1 space-y-1">
-              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                @if (editingOwnerId()) {
-                Editar Dono / Responsável
-                } @else {
-                Nome do Dono / Responsável
-                }
-              </label>
-              <input type="text" formControlName="name" placeholder="Ex: João Silva"
-                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white bg-white dark:bg-slate-900">
-            </div>
-
-            @if (editingOwnerId()) {
-            <button type="button" (click)="cancelOwnerEdit()"
-              class="h-10 px-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">
-              Cancelar
-            </button>
             }
-
-            <button type="submit" [disabled]="ownerForm.invalid"
-              class="h-10 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors">
-              @if (editingOwnerId()) {
-              Salvar
-              } @else {
-              Adicionar
-              }
-            </button>
-          </form>
-
-          <!-- List -->
-          <div class="space-y-2">
-            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide ml-1">Pessoas
-              Cadastradas</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              @for (owner of financeService.owners(); track owner.id) {
-              <div
-                class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm group">
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-xs">
-                    {{ owner.name.charAt(0).toUpperCase() }}
-                  </div>
-                  <span class="font-medium text-slate-700 dark:text-slate-200">{{ owner.name }}</span>
-                </div>
-
-                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                  <button (click)="editOwner(owner)"
-                    class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1" title="Editar">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button (click)="owner.id ? financeService.deleteOwner(owner.id) : null"
-                    class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1" title="Excluir">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              }
-            </div>
           </div>
         </div>
-        }
-
       </div>
+      }
+
     </div>
   </div>
-  }
+</div>
+}
+
+<!-- CALENDAR MODAL -->
+@if (activeModal() === 'calendar') {
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+
+  <div class="relative z-10 w-full max-w-sm animate-in zoom-in-95 duration-200">
+    <app-calendar-view (daySelected)="onDashboardCalendarSelect($event)">
+    </app-calendar-view>
+  </div>
+</div>
+}
 
 </div>
