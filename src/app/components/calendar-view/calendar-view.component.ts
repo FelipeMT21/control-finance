@@ -16,7 +16,7 @@ export class CalendarViewComponent {
   // Data que controla o que aparece na modal
   viewDate = signal(new Date());
 
-  // ESTOQUE LOCAL: Dados apenas para a modal, sem quebrar o Dashboard atrás
+  // ESTOQUE LOCAL: Dados apenas para a modal
   calendarTransactions = signal<Transaction[]>([]);
 
   // Emite a data selecionada para o Dashboard
@@ -29,7 +29,6 @@ export class CalendarViewComponent {
   weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   // --- RESUMO DO MÊS (MODAL) ---
-  // Calcula com base no calendarTransactions (o estoque local)
   monthlySummary = computed(() => {
     const transactions = this.calendarTransactions();
 
@@ -71,33 +70,63 @@ export class CalendarViewComponent {
     return days;
   });
 
-  // LÓGICA DAS BOLINHAS REVISADA
   private getDayStatus(date: Date, transactions: Transaction[]) {
     if (!transactions.length) return null;
 
-    // Filtra transações deste dia específico
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cellDate = new Date(date);
+    cellDate.setHours(0, 0, 0, 0);
+
     const dayTxs = transactions.filter(t => {
-      const dateToCompare = t.cardId ? t.billingDate : t.purchaseDate;
-      const tDate = new Date(dateToCompare);
-      
-      return tDate.getDate() === date.getDate() &&
-        tDate.getMonth() === date.getMonth() &&
-        tDate.getFullYear() === date.getFullYear();
+      const isCard = t.paymentMethod === 'CREDIT_CARD' || !!t.cardId;
+      let targetDate: Date;
+
+      if (isCard && t.billingDate) {
+        const [year, month] = t.billingDate.split('-').map(Number);
+        const closingDay = t.creditCard?.closingDay ||
+          this.financeService.cards().find(c => c.id === (t.cardId || t.creditCard?.id))?.closingDay || 1;
+
+        const lastDayOfInvoiceMonth = new Date(year, month, 0).getDate();
+        const visualDay = Math.min(closingDay, lastDayOfInvoiceMonth);
+        targetDate = new Date(year, month - 1, visualDay);
+      } else {
+        targetDate = new Date(t.purchaseDate);
+      }
+
+      targetDate.setHours(0, 0, 0, 0);
+      return targetDate.getTime() === cellDate.getTime();
     });
 
+    if (dayTxs.length === 0) return null;
+
     const expenses = dayTxs.filter(t => t.type === 'expense');
-    if (expenses.length === 0) return null;
+    if (expenses.length === 0) return { status: 'green', hasData: true, names: ['Receitas'] };
 
-    // Se houver 10 e 1 não estiver paga -> Vermelho (Pendente)
+    // --- CAPTURA DE NOMES PARA O TOOLTIP ---
+    const names = expenses.map(t => {
+      if (t.paymentMethod === 'CREDIT_CARD' || !!t.cardId) {
+        const cardName = t.creditCard?.name || this.financeService.getCard(t.cardId || '')?.name || 'Cartão';
+        return `Fatura: ${cardName}`;
+      }
+      return t.description;
+    });
+
+    // PRIORIDADE 1: CARTÃO (AZUL)
+    const hasCreditCard = expenses.some(t => t.paymentMethod === 'CREDIT_CARD' || !!t.cardId);
+    if (hasCreditCard) return { status: 'blue', hasData: true, names: [...new Set(names)] };
+
+    // PRIORIDADE 2: PENDÊNCIAS (VERMELHO/LARANJA)
     const hasPending = expenses.some(t => !t.paid);
+    if (hasPending) {
+      const status = cellDate.getTime() < today.getTime() ? 'red' : 'orange';
+      return { status, hasData: true, names: [...new Set(names)] };
+    }
 
-    return {
-      hasPending: hasPending, // true = vermelho, false = verde
-      hasData: true
-    };
+    return { status: 'green', hasData: true, names: [...new Set(names)] };
   }
 
-  // MÉTODO PARA CARREGAR DADOS SEM QUEBRAR O FUNDO
+  // MÉTODO PARA CARREGAR DADOS
   public loadCalendarData() {
     const date = this.viewDate();
     this.financeService.fetchTransactionsSilently(date.getMonth(), date.getFullYear())
