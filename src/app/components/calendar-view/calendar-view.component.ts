@@ -33,11 +33,11 @@ export class CalendarViewComponent {
     const transactions = this.calendarTransactions();
 
     const totalPending = transactions
-      .filter(t => !t.paid && t.type === 'expense')
+      .filter(t => !t.paid && t.type === 'EXPENSE')
       .reduce((acc, t) => acc + t.amount, 0);
 
     const totalPaid = transactions
-      .filter(t => t.paid && t.type === 'expense')
+      .filter(t => t.paid && t.type === 'EXPENSE')
       .reduce((acc, t) => acc + t.amount, 0);
 
     return { totalPending, totalPaid };
@@ -79,13 +79,14 @@ export class CalendarViewComponent {
     cellDate.setHours(0, 0, 0, 0);
 
     const dayTxs = transactions.filter(t => {
-      const isCard = t.paymentMethod === 'CREDIT_CARD' || !!t.cardId;
+      const isCard = t.paymentMethod === 'CREDIT_CARD' || !!t.creditCardId;
       let targetDate: Date;
 
       if (isCard && t.billingDate) {
         const [year, month] = t.billingDate.split('-').map(Number);
-        const closingDay = t.creditCard?.closingDay ||
-          this.financeService.cards().find(c => c.id === (t.cardId || t.creditCard?.id))?.closingDay || 1;
+
+        const card = this.financeService.cards().find(c => c.id === t.creditCardId)
+        const closingDay = card?.closingDay || 1;
 
         const lastDayOfInvoiceMonth = new Date(year, month, 0).getDate();
         const visualDay = Math.min(closingDay, lastDayOfInvoiceMonth);
@@ -100,20 +101,20 @@ export class CalendarViewComponent {
 
     if (dayTxs.length === 0) return null;
 
-    const expenses = dayTxs.filter(t => t.type === 'expense');
+    const expenses = dayTxs.filter(t => t.type === 'EXPENSE');
     if (expenses.length === 0) return { status: 'green', hasData: true, names: ['Receitas'] };
 
     // --- CAPTURA DE NOMES PARA O TOOLTIP ---
     const names = expenses.map(t => {
-      if (t.paymentMethod === 'CREDIT_CARD' || !!t.cardId) {
-        const cardName = t.creditCard?.name || this.financeService.getCard(t.cardId || '')?.name || 'Cartão';
+      if (t.paymentMethod === 'CREDIT_CARD' || !!t.creditCardId) {
+        const cardName = t.cardName || this.financeService.getCard(t.creditCardId || '')?.name || 'Cartão';
         return `Fatura: ${cardName}`;
       }
       return t.description;
     });
 
     // PRIORIDADE 1: CARTÃO (AZUL)
-    const hasCreditCard = expenses.some(t => t.paymentMethod === 'CREDIT_CARD' || !!t.cardId);
+    const hasCreditCard = expenses.some(t => t.paymentMethod === 'CREDIT_CARD' || !!t.creditCardId);
     if (hasCreditCard) return { status: 'blue', hasData: true, names: [...new Set(names)] };
 
     // PRIORIDADE 2: PENDÊNCIAS (VERMELHO/LARANJA)

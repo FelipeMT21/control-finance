@@ -96,14 +96,14 @@ export class DashboardComponent {
     this.transactionForm = this.fb.group({
       description: ['', Validators.required],
       amount: [null, [Validators.required, Validators.min(0.01)]],
-      type: ['expense', Validators.required],
+      type: ['EXPENSE', Validators.required],
       date: [this.getISODate(this.today), Validators.required],
       ownerId: [this.financeService.owners()[0]?.id || '', Validators.required],
       categoryId: [this.financeService.categories()[0]?.id || '', Validators.required],
 
       // NOVOS CAMPOS:
       useCard: [false],
-      cardId: [this.financeService.cards()[0]?.id || ''],
+      creditCardId: [this.financeService.cards()[0]?.id || ''],
       paymentMethod: ['PIX'], // Valor padrão inicial
 
       installments: [1]
@@ -117,13 +117,13 @@ export class DashboardComponent {
         // Se ligou o cartão: Define método como Crédito
         this.transactionForm.patchValue({
           paymentMethod: 'CREDIT_CARD',
-          cardId: this.financeService.cards()[0]?.id || ''
+          creditCardId: this.financeService.cards()[0]?.id || ''
         });
       } else {
         // Se desligou: Volta para Pix e limpa o cartão
         this.transactionForm.patchValue({
           paymentMethod: 'PIX',
-          cardId: null
+          creditCardId: null
         });
       }
     });
@@ -189,13 +189,13 @@ export class DashboardComponent {
 
       // 3. Filtro de Cartão
       if (currentCardId) {
-        const tCardId = t.creditCard?.id || t.cardId;
+        const tCardId = t.creditCardId;
         if (tCardId !== currentCardId) return false;
       }
 
       // 4. Filtro de Dono
       if (currentOwnerId) {
-        const tOwnerId = t.owner?.id || t.ownerId;
+        const tOwnerId = t.ownerId;
         if (tOwnerId !== currentOwnerId) return false;
       }
 
@@ -206,8 +206,8 @@ export class DashboardComponent {
       // 6. Busca por texto
       if (query) {
         const descText = t.description.toLowerCase();
-        const catText = (t.category?.name || this.getCategoryName(t.categoryId)).toLowerCase();
-        const ownerText = (t.owner?.name || this.getOwnerName(t.ownerId)).toLowerCase();
+        const catText = (t.categoryName || this.getCategoryName(t.categoryId)).toLowerCase();
+        const ownerText = (t.ownerName || this.getOwnerName(t.ownerId)).toLowerCase();
 
         const descriptionMatch = descText.includes(query);
         const categoryMatch = catText.includes(query);
@@ -222,8 +222,8 @@ export class DashboardComponent {
     // --- ORDENAÇÃO ---
     return filtered.sort((a, b) => {
       if (key === 'description' || key === 'category') {
-        const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId || a.category?.id).trim();
-        const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId || b.category?.id).trim();
+        const valA = key === 'description' ? a.description : this.getCategoryName(a.categoryId).trim();
+        const valB = key === 'description' ? b.description : this.getCategoryName(b.categoryId).trim();
 
         const comparison = valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' });
         return direction === 'asc' ? comparison : -comparison;
@@ -257,13 +257,13 @@ export class DashboardComponent {
   totalIncome = computed(() => {
     if (this.selectedCardId()) return 0;
     return this.filteredTransactions()
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'INCOME')
       .reduce((acc, t) => acc + t.amount, 0);
   });
 
   totalExpense = computed(() => {
     return this.filteredTransactions()
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'EXPENSE')
       .reduce((acc, t) => acc + t.amount, 0);
   });
 
@@ -313,11 +313,11 @@ export class DashboardComponent {
   });
 
   categoryChartData = computed<ChartData[]>(() => {
-    const expenses = this.filteredTransactions().filter(t => t.type === 'expense');
+    const expenses = this.filteredTransactions().filter(t => t.type === 'EXPENSE');
     const groups: Record<string, number> = {};
     for (const t of expenses) {
       // FIX: Agora t.category é um objeto, pegamos o ID direto.
-      const key = t.categoryId || t.category?.id || 'Outros';
+      const key = t.categoryId || 'Outros';
       groups[key] = (groups[key] || 0) + t.amount;
     }
     return Object.entries(groups)
@@ -369,17 +369,6 @@ export class DashboardComponent {
       console.warn('Tentativa de excluir transação sem ID persistido.');
       return;
     }
-
-    // 3. Ação para transação individual
-    if (confirm('Excluir esta movimentação?')) {
-      this.financeService.deleteTransaction(transaction.id).subscribe({
-        next: () => {
-          this.closeModal();
-          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
-        },
-        error: (err) => alert('Erro ao excluir: ' + err.message)
-      });
-    }
   }
 
   initiateEdit(transaction: Transaction) {
@@ -410,7 +399,7 @@ export class DashboardComponent {
         // Opção 2: Pagar Fatura Inteira (scope === 'all')
 
         // Identifica o cartão da transação clicada
-        const currentCardId = action.transaction.creditCard?.id || action.transaction.cardId;
+        const currentCardId = action.transaction.creditCardId;
 
         if (!currentCardId) {
           console.warn('Tentativa de pagar fatura sem cartão identificado.');
@@ -419,7 +408,7 @@ export class DashboardComponent {
 
         targetIds = this.financeService.transactions()
           .filter(t => {
-            const tCardId = t.creditCard?.id || t.cardId;
+            const tCardId = t.creditCardId;
             return tCardId === currentCardId;
           })
           // Filtrado para garantir que só foi pego quem tem ID (Type Guard)
@@ -485,26 +474,26 @@ export class DashboardComponent {
     if (this.transactionForm.invalid) return;
 
     const val = this.transactionForm.value;
-    const isExpense = val.type === 'expense';
+
+    const rawType = val.type ? val.type.toUpperCase() : 'EXPENSE';
+    const isExpense = rawType === 'EXPENSE';
+
     const usingCard = isExpense && val.useCard;
+    const currentCardId = val.creditCardId;
 
     // 1. Define o Método de Pagamento
     const finalPaymentMethod = usingCard ? 'CREDIT_CARD' : (val.paymentMethod || 'PIX');
 
-    // 2. REGRA DE OURO: Define se nasce Pago ou Pendente
-    // Se for Pix, Dinheiro ou Débito, é pagamento imediato (TRUE).
-    // Se for Cartão de Crédito ou Boleto, é pagamento futuro (FALSE).
-    // Se for Receita (Income), vamos assumir que entrou o dinheiro (TRUE), mas você pode mudar.
     let isPaidAutomatic = false;
 
     if (!isExpense) {
       isPaidAutomatic = true; // Receitas entram como pagas
     } else {
-      const immediateMethods = ['PIX', 'CASH', 'DEBIT_CARD'];
-      if (immediateMethods.includes(finalPaymentMethod)) {
-        isPaidAutomatic = true;
+      if (finalPaymentMethod === 'CREDIT_CARD' || 'BOLETO') {
+        isPaidAutomatic = false;
       } else {
-        isPaidAutomatic = false; // Crédito e Boleto
+        const immediateMethods = ['PIX', 'CASH', 'DEBIT_CARD'];
+        isPaidAutomatic = immediateMethods.includes(finalPaymentMethod);
       }
     }
 
@@ -512,19 +501,13 @@ export class DashboardComponent {
     const scope = this.batchEditScope();
 
     if (editId) {
-      // --- UPDATE LOGIC ---
-      // Na edição, geralmente mantemos o status que já estava. 
-      // Vou manter o padrão de não mexer no 'paid' na edição para não sobrescrever algo que foi marcado manualmente.
-
       const updatePayload: Partial<Transaction> = {
         description: val.description,
         amount: val.amount,
-        type: val.type,
+        type: rawType,
         purchaseDate: `${val.date}T12:00:00Z`,
-        category: { id: val.categoryId } as any,
-        owner: { id: val.ownerId } as any,
         categoryId: val.categoryId,
-        cardId: usingCard ? val.cardId : null,
+        creditCardId: usingCard ? currentCardId : null,
         ownerId: val.ownerId,
         paymentMethod: finalPaymentMethod as any
       };
@@ -577,14 +560,14 @@ export class DashboardComponent {
       this.financeService.addTransaction(
         val.description,
         val.amount,
-        val.type,
+        rawType,
         val.date,
         val.categoryId,
         val.ownerId,
-        usingCard ? val.cardId : null,
+        usingCard ? currentCardId : null,
         numInstallments,
         finalPaymentMethod,
-        isPaidAutomatic // <--- 10º ARGUMENTO: Enviando a regra automática
+        isPaidAutomatic
       ).subscribe({
         next: () => {
           this.closeModal();
@@ -596,7 +579,7 @@ export class DashboardComponent {
   }
 
   togglePaid(transaction: Transaction) {
-    if (transaction.cardId || transaction.creditCard?.id) {
+    if (transaction.creditCardId) {
       this.pendingAction.set({
         type: 'pay',
         transaction: transaction
@@ -696,9 +679,9 @@ export class DashboardComponent {
       this.editingTransactionId.set(transactionToEdit.id);
 
       // A. Extração de IDs
-      const tOwnerId = transactionToEdit.owner?.id || transactionToEdit.ownerId || '';
-      const tCatId = transactionToEdit.category?.id || transactionToEdit.categoryId || '';
-      const tCardId = transactionToEdit.creditCard?.id || transactionToEdit.cardId || '';
+      const tOwnerId = transactionToEdit.ownerId || '';
+      const tCatId = transactionToEdit.categoryId || '';
+      const tCardId = transactionToEdit.creditCardId || '';
 
       // B. Definição de Variáveis Auxiliares (AQUI ESTÁ O HASCARD)
       const hasCard = !!tCardId; // True se tiver ID, False se for vazio
@@ -715,14 +698,14 @@ export class DashboardComponent {
       this.transactionForm.setValue({
         description: transactionToEdit.description || '',
         amount: transactionToEdit.amount || 0,
-        type: transactionToEdit.type || 'expense',
+        type: transactionToEdit.type?.toUpperCase() || 'EXPENSE',
         date: transactionToEdit.purchaseDate ? transactionToEdit.purchaseDate.split('T')[0] : '',
         ownerId: tOwnerId,
         categoryId: tCatId,
 
         // Campos Novos
         useCard: hasCard, // Usa a variável criada acima
-        cardId: tCardId,
+        creditCardId: tCardId,
         paymentMethod: currentMethod,
 
         installments: transactionToEdit.installmentTotal || 1
@@ -738,7 +721,7 @@ export class DashboardComponent {
       this.useCard.set(false);
 
       this.transactionForm.reset({
-        type: 'expense',
+        type: 'EXPENSE',
         date: this.getISODate(new Date()),
         ownerId: this.financeService.owners()[0]?.id || '',
         categoryId: this.financeService.categories()[0]?.id || '',
@@ -839,20 +822,31 @@ export class DashboardComponent {
   }
 
   onSaveCard() {
-    if (this.cardForm.valid) {
-      if (this.editingCardId()) {
-        this.financeService.updateCard(this.editingCardId()!, this.cardForm.value);
-      } else {
-        const val = this.cardForm.value;
-        this.financeService.addCard(val.name, val.ownerId, val.closingDay, val.dueDay, val.color);
-      }
-      this.cancelCardEdit();
-    }
-  }
+    if (this.cardForm.invalid) return;
 
+    const val = this.cardForm.value;
+    const cardId = this.editingCardId();
+
+    if (cardId) {
+      // Passamos o valor do formulário DIRETO. 
+      // O Service que se vire para transformar 'ownerId' em 'Owner'.
+      this.financeService.updateCard(cardId, val);
+    } else {
+      this.financeService.addCard(val.name, val.ownerId, val.closingDay, val.dueDay, val.color);
+    }
+
+    this.cancelCardEdit();
+  }
+  
   editCard(card: CreditCard) {
     this.editingCardId.set(card.id ?? null);
-    this.cardForm.patchValue(card);
+    this.cardForm.patchValue({
+      name: card.name,
+      ownerId: card.owner?.id,
+      closingDay: card.closingDay,
+      dueDay: card.dueDay,
+      color: card.color
+    });
   }
 
   onSaveOwner() {

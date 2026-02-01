@@ -484,20 +484,20 @@
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                       <div class="w-2 h-8 rounded-full shrink-0"
-                        [style.backgroundColor]="t.type === 'income' ? '#10b981' : getCategoryColor(t.category.id || t.categoryId)">
+                        [style.backgroundColor]="t.type === 'INCOME' ? '#10b981' : getCategoryColor(t.categoryId)">
                       </div>
                       <div>
                         <div class="font-medium text-slate-900 dark:text-slate-200">{{ t.description }}</div>
                         <div class="text-xs text-slate-400 dark:text-slate-500 flex flex-wrap gap-2 mt-0.5">
                           <span>{{ formatDate(t.purchaseDate) }}</span>
-                          @if (!selectedCardId() && t.cardId) {
+                          @if (!selectedCardId() && t.creditCardId) {
                           <span class="text-indigo-500 dark:text-indigo-400 flex items-center gap-0.5">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
                               </path>
                             </svg>
-                            {{ t.creditCard?.name || getCardName(t.cardId) }}
+                            {{ t.cardName || getCardName(t.creditCardId) }}
                           </span>
                           }
                           @if (t.installmentTotal && t.installmentTotal > 1) {
@@ -506,7 +506,7 @@
                             {{ t.installmentCurrent }}/{{ t.installmentTotal }}
                           </span>
                           }
-                          <span class="text-slate-400 dark:text-slate-500"> • {{ t.owner.name ||
+                          <span class="text-slate-400 dark:text-slate-500"> • {{ t.ownerName ||
                             getOwnerName(t.ownerId) }}</span>
                         </div>
                       </div>
@@ -514,9 +514,9 @@
                   </td>
                   <td class="px-4 py-3 hidden sm:table-cell">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      [style.backgroundColor]="(t.category.color || getCategoryColor(t.categoryId)) + '20'"
-                      [style.color]="t.category.color || getCategoryColor(t.categoryId)">
-                      {{ t.category.name || getCategoryName(t.categoryId) }}
+                      [style.backgroundColor]="(t.categoryColor || getCategoryColor(t.categoryId)) + '20'"
+                      [style.color]="t.categoryColor || getCategoryColor(t.categoryId)">
+                      {{ t.categoryName || getCategoryName(t.categoryId) }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right vertical-align-middle">
@@ -525,8 +525,8 @@
                       <div
                         class="flex items-center gap-2 transition-transform duration-300 ease-in-out group-hover:-translate-y-2">
                         <span class="font-bold whitespace-nowrap"
-                          [class]="t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'">
-                          {{ t.type === 'income' ? '+' : '-' }} {{ formatCurrency(t.amount) }}
+                          [class]="t.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'">
+                          {{ t.type === 'INCOME' ? '+' : '-' }} {{ formatCurrency(t.amount) }}
                         </span>
 
                         <button (click)="togglePaid(t); $event.stopPropagation()"
@@ -632,8 +632,7 @@
           <button (click)="executeBatchAction('all')"
             [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'"
             class="w-full py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm">
-            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.cardId ||
-            pendingAction()?.transaction?.creditCard?.id) +
+            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' + getCardName(pendingAction()?.transaction?.creditCardId) +
             ')' : 'Todas as parcelas' }}
           </button>
         </div>
@@ -686,14 +685,14 @@
 
         <!-- Type Toggle -->
         <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
-          <button type="button" (click)="transactionForm.patchValue({type: 'expense'})"
+          <button type="button" (click)="transactionForm.patchValue({type: 'EXPENSE'})"
             class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
-            [class]="transactionForm.get('type')?.value === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+            [class]="transactionForm.get('type')?.value === 'EXPENSE' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Despesa
           </button>
-          <button type="button" (click)="transactionForm.patchValue({type: 'income'})"
+          <button type="button" (click)="transactionForm.patchValue({type: 'INCOME'})"
             class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
-            [class]="transactionForm.get('type')?.value === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+            [class]="transactionForm.get('type')?.value === 'INCOME' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Receita
           </button>
         </div>
@@ -756,7 +755,7 @@
         </div>
 
         <!-- Expense Specifics -->
-        @if (transactionForm.get('type')?.value === 'expense') {
+        @if (transactionForm.get('type')?.value === 'EXPENSE') {
         <div
           class="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-1">
 
@@ -785,7 +784,7 @@
               <label class="block text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase mb-1">
                 Selecione o Cartão
               </label>
-              <select formControlName="cardId"
+              <select formControlName="creditCardId"
                 class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-indigo-700 bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 text-slate-800 dark:text-white transition-all">
                 @for (card of financeService.cards(); track card.id) {
                 <option [value]="card.id">{{ card.name }} {{ card.owner.name }} (Fecha dia {{ card.closingDay }})</option>

@@ -11,6 +11,14 @@ import { Category } from '@app/models/category.model';
 import { Owner } from '@app/models/owner.model';
 import { CreditCard } from '@app/models/creditCard.model';
 
+interface CardFormData {
+  name: string;
+  ownerId: string; // O service recebe ID, não o objeto
+  closingDay: number;
+  dueDay: number;
+  color: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -32,17 +40,11 @@ export class FinanceService {
 
   // Settings no LocalStorage por enquanto
   readonly settings = signal<UserSettings>({ monthStartDay: 1, darkMode: false });
-
-  // Categorias agora vêm do BACKEND (Inicializa vazio)
   readonly categories = signal<Category[]>([]);
-
-  // Donos agora vêm do BACKEND (Inicializa vazio)
   readonly owners = signal<Owner[]>([]);
-
-  // Cartões agora vêm do BACKEND (Inicializa vazio)
   readonly cards = signal<CreditCard[]>([]);
 
-  // Backend managed entity (Private write, Public read-only)
+  // Backend managed entity
   private _transactions = signal<Transaction[]>([]);
   readonly transactions = this._transactions.asReadonly();
 
@@ -70,25 +72,30 @@ export class FinanceService {
     const dateRef = new Date(t.billingDate || t.purchaseDate);
 
     return {
-      ...t,
-      type: t.type.toLowerCase() as TransactionType,
+      id: t.id,
+      description: t.description,
+      amount: t.amount,
+      type: t.type,
+      paymentMethod: t.paymentMethod,
+      paid: t.paid,
+      createdAt: t.createdAt,
+      purchaseDate: t.purchaseDate,
+      billingDate: t.billingDate,
 
-      // Se vier null do banco antigo, assume false
-      paid: t.paid ?? false,
+      categoryId: t.categoryId,
+      ownerId: t.ownerId,
+      creditCardId: t.creditCardId,
+      groupId: t.groupId,
 
-      // Flattening de Objetos para IDs
-      categoryId: t.category?.id || '',
-      ownerId: t.owner?.id || '',
-      cardId: t.creditCard?.id || null,
+      categoryName: t.categoryName,
+      categoryColor: t.categoryColor,
+      ownerName: t.ownerName,
+      cardName: t.cardName,
+      cardColor: t.cardColor,
 
-      // Metadados Calculados
+      // --- METADADOS CALCULADOS NO FRONT ---
       effectiveMonth: dateRef.getUTCMonth(),
       effectiveYear: dateRef.getUTCFullYear(),
-
-      // Fallbacks
-      billingDate: t.billingDate,
-      purchaseDate: t.purchaseDate,
-
       installmentCurrent: t.installmentCurrent || 1,
       installmentTotal: t.installmentTotal || 1,
 
@@ -180,13 +187,32 @@ export class FinanceService {
       error: (err) => alert('Erro ao criar cartão ' + err.message)
     });
   }
-  updateCard(id: string, updates: Partial<CreditCard>) {
-    const payload = { ...updates };
+  updateCard(id: string, formData: CardFormData) {
+    // 1. LÓGICA: O Service busca o Dono na lista que ele já tem
+    const fullOwner = this.owners().find(o => o.id === formData.ownerId);
+
+    // Validação de segurança
+    if (!fullOwner) {
+      alert('Erro: Dono não encontrado na lista.');
+      return;
+    }
+
+    // 2. MONTAGEM: O Service prepara o payload para o Backend
+    const payload = {
+      id: id,
+      name: formData.name,
+      closingDay: Number(formData.closingDay),
+      dueDay: Number(formData.dueDay),
+      color: formData.color,
+      owner: fullOwner // Manda o objeto completo (agrada o TS e o Java)
+    };
+
+    // 3. ENVIO
     this.http.put<CreditCard>(`${this.API_URL_CARDS}/${id}`, payload).subscribe({
       next: (cardUpdate) => {
         this.cards.update(prev => prev.map(c => c.id === id ? cardUpdate : c));
       },
-      error: (err) => alert('Erro ao atualizar o cartão: ' + err.message)
+      error: (err) => alert('Erro na API: ' + err.message)
     });
   }
 
@@ -225,12 +251,16 @@ export class FinanceService {
     const javaMonth = month + 1; // JS 0-11 -> Java 1-12
     this.http.get<any[]>(`${this.API_URL}/filter`, {
       params: { month: javaMonth.toString(), year: year.toString() }
-    }).subscribe({
-      next: (data) => {
-        const mappedData: Transaction[] = data.map(t => this.mapTransaction(t));
+    }).pipe(
+      map(data => data.map(t => this.mapTransaction(t)))
+    ).subscribe({
+      next: (mappedData) => {
         this._transactions.set(mappedData);
       },
-      error: (err) => console.error('Erro ao filtrar:', err)
+      error: (err) => {
+        console.error('Erro ao carregar transações:', err)
+        alert('Não foi possível carregar as transações. Tente novamente mais tarde.')
+      }
     });
   }
 
@@ -265,9 +295,9 @@ export class FinanceService {
     const month = parseInt(mStr) - 1;
     const day = parseInt(dStr);
 
-    const totalInstallments = (type === 'expense') ? (installments > 0 ? installments : 1) : 1;
+    const totalInstallments = (type === 'EXPENSE') ? (installments > 0 ? installments : 1) : 1;
     const amountPerInstallment = amount / totalInstallments;
-    const groupId = totalInstallments > 1 ? this.generateUUID() : null;
+    const groupId = totalInstallments > 1 ? this.generateUUID() : undefined;
 
     const requests: Observable<any>[] = [];
 
@@ -284,7 +314,6 @@ export class FinanceService {
       const y = effectiveDate.getFullYear();
       const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
       const d = String(effectiveDate.getDate()).padStart(2, '0');
-      // Formata como ISO para o LocalDateTime do Java
       const formattedDate = `${y}-${m}-${d}T12:00:00Z`
 
       // Construct Backend Payload
@@ -293,14 +322,13 @@ export class FinanceService {
         amount: amountPerInstallment,
         type: type.toUpperCase(), // Enum JAVA: INCOME, EXPENSE
         purchaseDate: formattedDate, // ISO LocalDateTime
-        category: { id: categoryId },
-        owner: { id: ownerId },
-        creditCard: (type === 'expense' && cardId) ? { id: cardId } : null, // Envia objeto ou null
-        
-        paymentMethod: paymentMethod, // <--- 2. ENVIANDO PARA O JAVA
-        
-        groupId: groupId,
 
+        categoryId: categoryId,
+        ownerId: ownerId,
+        creditCardId: (type.toUpperCase() === 'EXPENSE' && cardId) ? cardId : null, // Envia string ou null
+
+        paymentMethod: paymentMethod,
+        groupId: groupId,
         paid: paid
       };
 
@@ -325,14 +353,27 @@ export class FinanceService {
 
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
     // Prepara o objeto para o Backend (converte type para Maiúsculo se existir)
-    const payload = { ...updates };
-    if (payload.type) {
-      // @ts-ignore: Forçando uppercase para o Java, mesmo que o Front use lowercase
-      payload.type = payload.type.toUpperCase();
+    const payload: any = {
+      description: updates.description,
+      amount: updates.amount,
+      purchaseDate: updates.purchaseDate,
+      paid: updates.paid,
+
+      categoryId: updates.categoryId,
+      ownerId: updates.ownerId,
+      creditCardId: updates.creditCardId,
+
+      paymentMethod: updates.paymentMethod,
+      groupId: updates.groupId
+    };
+    if (updates.type) {
+      payload.type = updates.type.toUpperCase();
     }
 
+    // Remove chaves undefined/null que não devem ser enviadas (opcional, mas bom para PATCH)
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
     return this.http.patch(`${this.API_URL}/${id}`, payload).pipe(
-      // tap(() => this.loadByMonth(this.lastViewedMonth, this.lastViewedYear)), // Recarrega a lista após o sucesso
       catchError(err => {
         console.error('Erro ao atualizar:', err);
         return throwError(() => new Error('Falha ao atualizar transação.'));
