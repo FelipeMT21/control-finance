@@ -358,17 +358,13 @@ export class DashboardComponent {
   // --- CRUD & Batch Logic ---
 
   initiateDelete(transaction: Transaction) {
-    // 1. Se tem grupo, abre o modal de lote e encerra aqui
-    if (transaction.groupId) {
-      this.pendingAction.set({ type: 'delete', transaction });
-      this.activeModal.set('batch-confirm');
-    }
+    if (!transaction.id) return;
 
-    // 2. Verificação de segurança (Type Guard)
-    if (!transaction.id) {
-      console.warn('Tentativa de excluir transação sem ID persistido.');
-      return;
-    }
+    // Define que a ação é deletar
+    this.pendingAction.set({ type: 'delete', transaction });
+
+    // Abre o modal 'batch-confirm' (que agora está híbrido no HTML)
+    this.activeModal.set('batch-confirm');
   }
 
   initiateEdit(transaction: Transaction) {
@@ -837,7 +833,7 @@ export class DashboardComponent {
 
     this.cancelCardEdit();
   }
-  
+
   editCard(card: CreditCard) {
     this.editingCardId.set(card.id ?? null);
     this.cardForm.patchValue({
