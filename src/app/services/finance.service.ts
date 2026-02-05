@@ -117,7 +117,10 @@ export class FinanceService {
       next: (newCat) => {
         this.categories.update(prev => [...prev, newCat]);
       },
-      error: (err) => alert('Error ao criar categoria: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao criar categoria.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -126,7 +129,10 @@ export class FinanceService {
       next: () => {
         this.categories.update(prev => prev.filter(c => c.id !== id));
       },
-      error: (err) => alert('Erro ao excluir categoria (pode estar em uso): ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Esta categoria está em uso por transações e não pode ser excluída.';
+        alert('Erro: ' + msg);
+      }
     });
   }
 
@@ -143,7 +149,10 @@ export class FinanceService {
       next: (newOwner) => {
         this.owners.update(prev => [...prev, newOwner])
       },
-      error: (err) => alert('Erro ao excluir dono (pode estar em uso); ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro desconhecido ao criar dono.';
+        alert("Atenção: " + msg);
+      }
     });
   }
 
@@ -152,7 +161,10 @@ export class FinanceService {
       next: (ownerUpdate) => {
         this.owners.update(prev => prev.map(o => o.id === id ? ownerUpdate : o))
       },
-      error: (err) => alert('Erro ao atualizar dono: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro desconhecido ao atualizar.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -161,7 +173,10 @@ export class FinanceService {
       next: () => {
         this.owners.update(prev => prev.filter(o => o.id !== id))
       },
-      error: (err) => alert('Erro ao excluir dono (pode ter transações vinculadas): ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Não foi possível excluir (verifique vínculos).';
+        alert('Erro: ' + msg);
+      }
     });
   }
 
