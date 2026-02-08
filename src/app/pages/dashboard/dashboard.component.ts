@@ -5,7 +5,7 @@ import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angula
 import { FinanceService } from '../../services/finance.service';
 import { Owner } from '@app/models/owner.model';
 import { CreditCard } from '@app/models/creditCard.model';
-import { Transaction } from '@app/models/transaction.model';
+import { Transaction, TransactionType } from '@app/models/transaction.model';
 import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '@app/components/button/button.component';
@@ -514,7 +514,7 @@ export class DashboardComponent {
             this.closeModal();
             this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
           },
-          error: (err) => alert('Erro ao atualizar: ' + err.message)
+          error: (err) => alert('Erro ao atualizar: ' + (err.error?.message || err.message))
         });
       } else {
         // Batch Logic... (código já existente)
@@ -543,7 +543,11 @@ export class DashboardComponent {
                 this.closeModal();
                 this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
               },
-              error: (err) => alert('Erro ao atualizar em lote: ' + err.message)
+              error: (err) => {
+                const msg = err.error?.message || 'Ocorreu um erro ao salvar a transação.';
+                console.error('Erro no cadastro:', err);
+                alert('Não foi possível salvar: ' + msg);
+              }
             });
           });
         }
@@ -556,7 +560,7 @@ export class DashboardComponent {
       this.financeService.addTransaction(
         val.description,
         val.amount,
-        rawType,
+        rawType as TransactionType,
         val.date,
         val.categoryId,
         val.ownerId,
@@ -713,19 +717,24 @@ export class DashboardComponent {
       this.batchEditScope.set(null);
       this.customInstallmentMode.set(false);
 
-      // Reseta para desligado (False)
-      this.useCard.set(false);
+      const filteredCardId = this.selectedCardId();
+      const hasFilterCard = !!filteredCardId;
+
+      this.useCard.set(hasFilterCard);
+
+      const ownerParaOForm = this.selectedOwnerId() || this.financeService.owners()[0]?.id || '';
+      const cardParaOForm = this.selectedCardId() || this.financeService.cards()[0]?.id || '';
 
       this.transactionForm.reset({
         type: 'EXPENSE',
         date: this.getISODate(new Date()),
-        ownerId: this.financeService.owners()[0]?.id || '',
+        ownerId: ownerParaOForm,
         categoryId: this.financeService.categories()[0]?.id || '',
-        cardId: this.financeService.cards()[0]?.id || '',
+        creditCardId: cardParaOForm,
 
         // Padrões Iniciais
-        useCard: false, // Aqui usamos false direto
-        paymentMethod: 'PIX',
+        useCard: hasFilterCard, // Aqui usamos false direto
+        paymentMethod: hasFilterCard ? 'CREDIT_CARD' : 'PIX',
         installments: 1
       });
     }

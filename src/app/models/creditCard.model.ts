@@ -6,5 +6,7 @@ export interface CreditCard {
     closingDay: number;
     dueDay: number;
     color: string;
-    owner: Owner;
+    owner: Owner; 
+    
+    ownerId?: string; 
 }

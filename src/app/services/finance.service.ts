@@ -117,7 +117,10 @@ export class FinanceService {
       next: (newCat) => {
         this.categories.update(prev => [...prev, newCat]);
       },
-      error: (err) => alert('Error ao criar categoria: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao criar categoria.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -126,7 +129,10 @@ export class FinanceService {
       next: () => {
         this.categories.update(prev => prev.filter(c => c.id !== id));
       },
-      error: (err) => alert('Erro ao excluir categoria (pode estar em uso): ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Esta categoria está em uso por transações e não pode ser excluída.';
+        alert('Erro: ' + msg);
+      }
     });
   }
 
@@ -143,7 +149,10 @@ export class FinanceService {
       next: (newOwner) => {
         this.owners.update(prev => [...prev, newOwner])
       },
-      error: (err) => alert('Erro ao excluir dono (pode estar em uso); ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro desconhecido ao criar dono.';
+        alert("Atenção: " + msg);
+      }
     });
   }
 
@@ -152,7 +161,10 @@ export class FinanceService {
       next: (ownerUpdate) => {
         this.owners.update(prev => prev.map(o => o.id === id ? ownerUpdate : o))
       },
-      error: (err) => alert('Erro ao atualizar dono: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro desconhecido ao atualizar.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -161,7 +173,10 @@ export class FinanceService {
       next: () => {
         this.owners.update(prev => prev.filter(o => o.id !== id))
       },
-      error: (err) => alert('Erro ao excluir dono (pode ter transações vinculadas): ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Não foi possível excluir (verifique vínculos).';
+        alert('Erro: ' + msg);
+      }
     });
   }
 
@@ -178,33 +193,26 @@ export class FinanceService {
       closingDay,
       dueDay,
       color,
-      owner: { id: ownerId }
+      ownerId: ownerId
     }
     this.http.post<CreditCard>(this.API_URL_CARDS, newCard).subscribe({
       next: (cardSave) => {
         this.cards.update(prev => [...prev, cardSave]);
       },
-      error: (err) => alert('Erro ao criar cartão ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao criar cartão.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
   updateCard(id: string, formData: CardFormData) {
-    // 1. LÓGICA: O Service busca o Dono na lista que ele já tem
-    const fullOwner = this.owners().find(o => o.id === formData.ownerId);
-
-    // Validação de segurança
-    if (!fullOwner) {
-      alert('Erro: Dono não encontrado na lista.');
-      return;
-    }
-
-    // 2. MONTAGEM: O Service prepara o payload para o Backend
     const payload = {
       id: id,
       name: formData.name,
       closingDay: Number(formData.closingDay),
       dueDay: Number(formData.dueDay),
       color: formData.color,
-      owner: fullOwner // Manda o objeto completo (agrada o TS e o Java)
+      ownerId: formData.ownerId // Manda o objeto completo (agrada o TS e o Java)
     };
 
     // 3. ENVIO
@@ -212,7 +220,10 @@ export class FinanceService {
       next: (cardUpdate) => {
         this.cards.update(prev => prev.map(c => c.id === id ? cardUpdate : c));
       },
-      error: (err) => alert('Erro na API: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao atualizar cartão.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -222,7 +233,10 @@ export class FinanceService {
       next: (cardUpdate) => {
         this.cards.update(prev => prev.map(c => c.id === id ? cardUpdate : c));
       },
-      error: (err) => alert('Erro ao atualizar o cartão: ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao atualizar cartão.';
+        alert('Atenção: ' + msg);
+      }
     });
   }
 
@@ -231,7 +245,10 @@ export class FinanceService {
       next: () => {
         this.cards.update(prev => prev.filter(c => c.id !== id));
       },
-      error: (err) => alert('Erro ao excluir cartão (verifique se há transações nele): ' + err.message)
+      error: (err) => {
+        const msg = err.error?.message || 'Não é possível excluir este cartão pois ele possui faturas/compras vinculadas.';
+        alert('Bloqueio: ' + msg);
+      }
     })
   }
 
