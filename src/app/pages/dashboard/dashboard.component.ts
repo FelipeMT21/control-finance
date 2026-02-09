@@ -10,6 +10,8 @@ import { ChartComponent, ChartData } from '../../components/chart.component';
 import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '@app/components/button/button.component';
 import { CalendarViewComponent } from '@app/components/calendar-view/calendar-view.component';
+import { Router } from '@angular/router';
+import { AuthService } from '@app/services/auth.service';
 
 type BatchActionType = 'delete' | 'edit' | 'pay';
 type BatchScope = 'single' | 'all' | 'future' | 'past';
@@ -29,6 +31,9 @@ interface PendingAction {
 export class DashboardComponent {
   financeService = inject(FinanceService);
   fb = inject(FormBuilder);
+
+  private authService = inject(AuthService);
+  private router = inject(Router);  
 
   @ViewChild(CalendarViewComponent) calendarComponent!: CalendarViewComponent;
 
@@ -644,6 +649,13 @@ export class DashboardComponent {
       color: '#1e293b',
       ownerId: this.financeService.owners()[0]?.id || ''
     });
+  }
+
+  onLogout() {
+    this.authService.logout();
+    
+    // 2. Manda o usuário de volta para o login
+    this.router.navigate(['/login']);
   }
 
   openModal(type: 'transaction' | 'settings' | 'batch-confirm' | 'calendar', transactionToEdit: Transaction | null = null) {

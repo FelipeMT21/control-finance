@@ -3,14 +3,15 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { loadingInterceptor } from './interceptors/loading-interceptor';
+import { authInterceptor } from './interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
     provideRouter(routes),
     provideHttpClient(
-      withFetch(), 
-      withInterceptors([loadingInterceptor]) // Spinner
+      withFetch(),
+      withInterceptors([authInterceptor, loadingInterceptor])
     )
   ]
 };
