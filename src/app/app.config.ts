@@ -1,6 +1,9 @@
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations'; // 👈 Importar Animações
+import { provideToastr } from 'ngx-toastr'; // 👈 Importar Toastr
+
 import { routes } from './app.routes';
 import { loadingInterceptor } from './interceptors/loading-interceptor';
 import { authInterceptor } from './interceptors/auth.interceptor';
@@ -12,6 +15,14 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withFetch(),
       withInterceptors([authInterceptor, loadingInterceptor])
-    )
+    ),
+    provideAnimations(), 
+    provideToastr({
+      timeOut: 3000,
+      positionClass: 'toast-top-right',
+      preventDuplicates: true,
+      progressBar: true,
+      closeButton: true
+    })
   ]
 };

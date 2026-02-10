@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { tap } from "rxjs";
+import { Observable, tap } from "rxjs";
 import { environment } from "src/environments/environment";
 
 @Injectable({
@@ -27,4 +27,22 @@ export class AuthService {
     getToken() {
         return localStorage.getItem('vault_token');
     }
+
+    loginAsGuest(): Observable<any> {
+    return this.http.post(`${this.API_URL}/login/guest-demo`, {}).pipe(
+      tap((response: any) => {
+        // Se o login der certo, salva o token automaticamente
+        if (response.token) {
+          localStorage.setItem('auth-token', response.token);
+          // Opcional: Salvar o username para mostrar avisos depois
+          localStorage.setItem('username', 'visitante_demo'); 
+        }
+      })
+    );
+  }
+  
+  // Método auxiliar útil para saber se é visitante
+  isGuestUser(): boolean {
+    return localStorage.getItem('username') === 'visitante_demo';
+  } 
 }
