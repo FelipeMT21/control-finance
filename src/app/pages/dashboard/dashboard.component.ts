@@ -32,9 +32,9 @@ export class DashboardComponent {
   financeService = inject(FinanceService);
   fb = inject(FormBuilder);
 
-  private authService = inject(AuthService);
-  private router = inject(Router);  
-
+  public authService = inject(AuthService);
+  private router = inject(Router);
+  
   @ViewChild(CalendarViewComponent) calendarComponent!: CalendarViewComponent;
 
   // --- UI State ---

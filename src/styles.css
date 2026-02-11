@@ -80,3 +80,18 @@ button,
 input[type="submit"] {
   cursor: pointer !important;
 }
+
+/* toast */
+.toast-container .ngx-toastr {
+  width: 90vw !important;
+  max-width: 250px !important;
+  max-height: 200px !important;
+}
+
+.toast-title {
+  font-size: 12px !important;
+}
+
+.toast-message {
+  font-size: 10px !important;
+}

@@ -17,7 +17,8 @@ export class LoginComponent {
   username = '';
   password = '';
 
-  isLoadingGuest = signal(false); 
+  isLoadingGuest = signal(false);
+  isLoadingLogin = signal(false);
 
   private authService = inject(AuthService);
   private router = inject(Router);
@@ -25,15 +26,16 @@ export class LoginComponent {
 
   onSubmit() {
     if (this.username && this.password) {
-      this.authService.login(this.username, this.password).subscribe({
+      this.isLoadingLogin.set(true);
+      this.authService.login(this.username, this.password)
+      .pipe(finalize(() => this.isLoadingLogin.set(false)))
+      .subscribe({
         next: (res) => {
-          // Troquei o console.log por um toastr bonito
           this.toastr.success('Login realizado com sucesso!', 'Bem-vindo');
           this.router.navigate(['/dashboard']);
         },
         error: (err) => {
           console.error('Erro ao logar:', err);
-          // Troquei o alert feio por um toastr de erro
           this.toastr.error('Usuário ou senha incorretos.', 'Erro de Login');
         }
       });
@@ -48,16 +50,14 @@ handleGuestLogin() {
     this.authService.loginAsGuest()
       .pipe(
         finalize(() => {
-          this.isLoadingGuest.set(false); // Garante que o spinner para
+          this.isLoadingGuest.set(false);
         })
       )
       .subscribe({
         next: (res: any) => {
-          // Pega o token da resposta (pode vir como 'token' ou 'accessToken')
           const token = res.token || res.accessToken;
 
           if (token) {
-            // 👇 AQUI ESTAVA O ERRO! Mude para 'vault_token'
             localStorage.setItem('vault_token', token); 
             
             this.toastr.success('Modo Demonstração ativado!', 'Acesso Liberado');
