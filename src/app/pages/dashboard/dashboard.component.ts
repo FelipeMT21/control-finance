@@ -34,7 +34,7 @@ export class DashboardComponent {
 
   public authService = inject(AuthService);
   private router = inject(Router);
-  
+
   @ViewChild(CalendarViewComponent) calendarComponent!: CalendarViewComponent;
 
   // --- UI State ---
@@ -94,8 +94,7 @@ export class DashboardComponent {
       }
     });
 
-    // Faz o carregamento inicial filtrado pelo mês e ano que foi definido nos signals
-    this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+    this.financeService.reloadData(this.selectedMonth(), this.selectedYear());
 
     // Inicialização dos formulários
     this.transactionForm = this.fb.group({
@@ -652,9 +651,8 @@ export class DashboardComponent {
   }
 
   onLogout() {
+    this.financeService.resetState();
     this.authService.logout();
-    
-    // 2. Manda o usuário de volta para o login
     this.router.navigate(['/login']);
   }
 

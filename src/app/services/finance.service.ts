@@ -448,4 +448,20 @@ export class FinanceService {
     if (!id) return null;
     return this.cards().find(c => c.id === id);
   }
+
+  resetState() {
+    this._transactions.set([]);
+    this.categories.set([]);
+    this.owners.set([]);
+    this.cards.set([]);
+    this.lastViewedMonth = new Date().getMonth();
+    this.lastViewedYear = new Date().getFullYear();
+  }
+
+  reloadData(month: number, year: number) {
+    this.loadOwners();
+    this.loadCategories();
+    this.loadCards();
+    this.loadByMonth(month, year);
+  }
 }
