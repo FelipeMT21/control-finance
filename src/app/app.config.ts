@@ -5,7 +5,6 @@ import { provideAnimations } from '@angular/platform-browser/animations'; // ðŸ‘
 import { provideToastr } from 'ngx-toastr'; // ðŸ‘ˆ Importar Toastr
 
 import { routes } from './app.routes';
-import { loadingInterceptor } from './interceptors/loading-interceptor';
 import { authInterceptor } from './interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -14,7 +13,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(
       withFetch(),
-      withInterceptors([authInterceptor, loadingInterceptor])
+      withInterceptors([authInterceptor])
     ),
     provideAnimations(), 
     provideToastr({

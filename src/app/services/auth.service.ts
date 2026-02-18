@@ -9,7 +9,7 @@ import { environment } from "src/environments/environment";
 export class AuthService {
   private readonly API_URL = `${environment.apiUrl}/auth`;
   http = inject(HttpClient);
-  
+
   isGuestSignal = signal<boolean>(localStorage.getItem('username') === 'visitante_demo');
   usernameSignal = signal<string>(localStorage.getItem('username') || 'Usuário');
 
@@ -51,4 +51,9 @@ export class AuthService {
   isGuestUser(): boolean {
     return this.isGuestSignal();
   }
+
+  checkServerStatus() {
+    return this.http.get(`${this.API_URL}/health`, { responseType: 'text' });
+  }
+
 }
