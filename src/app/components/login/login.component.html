@@ -28,6 +28,23 @@
     </div>
 
     <div class="p-8">
+      @if (isServerWakingUp()) {
+      <div
+        class="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center gap-3 animate-pulse">
+        <div class="flex-shrink-0">
+          <svg class="animate-spin h-5 w-5 text-indigo-600" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none">
+            </circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm text-indigo-700 dark:text-indigo-300 font-semibold">Despertando o VAULT...</p>
+          <p class="text-xs text-indigo-500 dark:text-indigo-400">O servidor gratuito do Render entra em repouso. Isso
+            pode levar 30s a 1m.</p>
+        </div>
+      </div>
+      }
       <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="space-y-5">
 
         <div>
@@ -66,7 +83,7 @@
           </div>
         </div>
 
-        <button type="submit" [disabled]="!loginForm.form.valid || isLoadingLogin()"
+        <button type="submit" [disabled]="!loginForm.form.valid || isLoadingLogin() || isServerWakingUp()"
           class="w-full mt-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 group">
 
           @if (isLoadingLogin()) {
@@ -96,7 +113,7 @@
           </div>
         </div>
 
-        <button type="button" (click)="handleGuestLogin()" [disabled]="isLoadingGuest()"
+        <button type="button" (click)="handleGuestLogin()" [disabled]="isLoadingGuest() || isServerWakingUp()"
           class="w-full py-3 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed">
 
           @if (isLoadingGuest()) {
