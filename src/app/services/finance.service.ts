@@ -358,6 +358,12 @@ export class FinanceService {
     return forkJoin(requests);
   }
 
+  addTransactionLocally(transaction: Transaction) {
+    this._transactions.update(currentList => {
+      return [transaction, ...currentList];
+    });
+  }
+
   deleteTransaction(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
   }
