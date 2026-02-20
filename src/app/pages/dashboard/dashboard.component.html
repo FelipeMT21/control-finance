@@ -21,29 +21,33 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="flex items-center gap-3">
-          <span class="text-slate-700 dark:text-slate-200 font-medium">
+        <div class="flex items-center gap-1.5 sm:gap-3">
+
+          <span
+            class="hidden sm:block text-slate-700 dark:text-slate-200 font-medium truncate max-w-[120px] md:max-w-none">
             Olá, {{ authService.usernameSignal() === 'visitante_demo' ? 'Visitante' : authService.usernameSignal() }}!
           </span>
+
           @if (authService.isGuestUser()) {
           <span
-            class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-wider animate-pulse">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            Modo Demo
+            class="flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-wider animate-pulse whitespace-nowrap">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+            <span class="hidden sm:inline">Modo Demo</span>
+            <span class="sm:hidden">Demo</span>
           </span>
           } @else {
           <span
-            class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+            class="flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wider whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd"
                 d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zM10 5a2 2 0 100 4 2 2 0 000-4z"
                 clip-rule="evenodd" />
             </svg>
-            Acesso Total
+            <span class="hidden sm:inline">Acesso Total</span>
           </span>
           }
         </div>
-        
+
         <!-- Dark Mode Toggle -->
         <button (click)="toggleDarkMode()"
           class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer active:scale-90 group"
@@ -106,22 +110,32 @@
         <!-- LEVEL 1: OWNERS (Visão Geral | Felipe | Jhully) -->
         <div class="flex flex-col gap-2 w-full lg:w-auto">
           <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
-            <!-- Overview Button -->
+
             <app-button [isActive]="selectedOwnerId() === null" (clicked)="selectOwnerFilter(null)">
               Visão Geral
             </app-button>
+            @if (financeService.isLoading()) {
+            <div class="h-10 w-24 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse"></div>
+            <div class="h-10 w-24 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse"></div>
+            <div class="h-10 w-24 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse"></div>
+            } @else {
 
-            <!-- Owners Buttons -->
             @for (owner of financeService.owners(); track owner.id) {
             <app-button [isActive]="selectedOwnerId() === owner.id" (clicked)="selectOwnerFilter(owner.id || null)">
               {{ owner.name }}
             </app-button>
+            }
             }
           </div>
 
           <!-- LEVEL 2: CARDS (Only visible if specific Owner is selected) -->
           @if (selectedOwnerId()) {
           <div class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar animate-in fade-in slide-in-from-top-2">
+
+            @if (financeService.isLoading()) {
+            <div class="h-10 w-36 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse"></div>
+            <div class="h-10 w-28 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse"></div>
+            } @else {
             <app-button [isActive]="selectedCardId() === null" class="border-dashed" (clicked)="selectCardFilter(null)">
               Todos os Cartões
             </app-button>
@@ -134,6 +148,7 @@
             }
             @if (ownerCards().length === 0) {
             <span class="text-xs text-slate-400 italic py-1.5 px-2">Nenhum cartão vinculado.</span>
+            }
             }
           </div>
           }
@@ -177,11 +192,7 @@
 
     <!-- MAIN DASHBOARD CONTENT -->
     @if (!selectedCardId()) {
-    <!-- GENERAL VIEW (Default or Owner Overview) -->
-
-    <!-- KPI Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-2">
-      <!-- Income Card -->
       <div
         class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
         <div
@@ -189,14 +200,25 @@
         </div>
         <div class="relative z-10">
           <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Receitas</p>
-          <h3 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(totalIncome()) }}</h3>
-          <div class="mt-2 flex items-center text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+
+          <h3 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center h-9">
+            @if (financeService.isLoading()) {
+            <div class="h-8 w-36 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg animate-pulse"></div>
+            } @else {
+            {{ formatCurrency(totalIncome()) }}
+            }
+          </h3>
+
+          <div class="mt-2 flex items-center text-xs text-emerald-700 dark:text-emerald-300 font-medium h-5">
+            @if (financeService.isLoading()) {
+            <div class="h-4 w-28 bg-emerald-100 dark:bg-emerald-900/50 rounded animate-pulse"></div>
+            } @else {
             <span class="bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">Entradas do mês</span>
+            }
           </div>
         </div>
       </div>
 
-      <!-- Expense Card -->
       <div
         class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
         <div
@@ -204,34 +226,58 @@
         </div>
         <div class="relative z-10">
           <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Despesas</p>
-          <h3 class="text-3xl font-bold text-rose-600 dark:text-rose-400">{{ formatCurrency(totalExpense()) }}</h3>
-          <div class="mt-2 flex items-center text-xs text-rose-700 dark:text-rose-300 font-medium">
+
+          <h3 class="text-3xl font-bold text-rose-600 dark:text-rose-400 flex items-center h-9">
+            @if (financeService.isLoading()) {
+            <div class="h-8 w-36 bg-rose-100 dark:bg-rose-900/50 rounded-lg animate-pulse"></div>
+            } @else {
+            {{ formatCurrency(totalExpense()) }}
+            }
+          </h3>
+
+          <div class="mt-2 flex items-center text-xs text-rose-700 dark:text-rose-300 font-medium h-5">
+            @if (financeService.isLoading()) {
+            <div class="h-4 w-28 bg-rose-100 dark:bg-rose-900/50 rounded animate-pulse"></div>
+            } @else {
             <span class="bg-rose-100 dark:bg-rose-900/40 px-2 py-0.5 rounded-md">Saídas previstas</span>
+            }
           </div>
         </div>
       </div>
 
-      <!-- Balance Card -->
-      <div class="p-6 rounded-2xl shadow-md border border-white/10 relative overflow-hidden text-white"
+      <div
+        class="p-6 rounded-2xl shadow-md border border-white/10 relative overflow-hidden text-white transition-colors duration-500"
         [class]="balance() >= 0 ? 'bg-gradient-to-br from-indigo-500 to-blue-600' : 'bg-gradient-to-br from-slate-700 to-slate-900'">
         <div class="relative z-10">
           <p class="text-sm font-medium text-indigo-100 mb-1">Balanço Mensal</p>
-          <h3 class="text-3xl font-bold">{{ formatCurrency(balance()) }}</h3>
-          <p class="text-xs text-indigo-200 mt-2 opacity-80">
-            {{ selectedOwnerId() ? 'Saldo filtrado por dono.' : 'Saldo geral do mês.' }}
-          </p>
+
+          <h3 class="text-3xl font-bold flex items-center h-9">
+            @if (financeService.isLoading()) {
+            <div class="h-8 w-36 bg-white/20 rounded-lg animate-pulse"></div>
+            } @else {
+            {{ formatCurrency(balance()) }}
+            }
+          </h3>
+
+          <div class="mt-2 h-4">
+            @if (financeService.isLoading()) {
+            <div class="h-3 w-40 bg-white/20 rounded animate-pulse"></div>
+            } @else {
+            <p class="text-xs text-indigo-200 opacity-80">
+              {{ selectedOwnerId() ? 'Saldo filtrado por dono.' : 'Saldo geral do mês.' }}
+            </p>
+            }
+          </div>
         </div>
       </div>
     </div>
 
     } @else {
-    <!-- INVOICE VIEW (Specific Card) -->
     @if (invoiceInfo(); as invoice) {
     <div class="mb-8 animate-in fade-in slide-in-from-bottom-2">
-      <div class="rounded-2xl p-6 text-white relative overflow-hidden shadow-lg"
+      <div class="rounded-2xl p-6 text-white relative overflow-hidden shadow-lg transition-colors duration-500"
         [style.backgroundColor]="invoice.color">
 
-        <!-- Background Decoration -->
         <div
           class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none">
         </div>
@@ -260,7 +306,13 @@
             </div>
             <div class="text-right">
               <p class="text-[10px] uppercase tracking-wider opacity-75">Valor da Fatura</p>
-              <p class="text-4xl font-bold font-mono">{{ formatCurrency(totalExpense()) }}</p>
+              <div class="h-10 flex items-center justify-end">
+                @if (financeService.isLoading()) {
+                <div class="h-8 w-40 bg-white/30 rounded-lg animate-pulse"></div>
+                } @else {
+                <p class="text-4xl font-bold font-mono">{{ formatCurrency(totalExpense()) }}</p>
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -279,8 +331,15 @@
         @if (!selectedCardId()) {
         <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
           <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Fluxo (Entrada vs Saída)</h3>
-          <div class="h-48">
-            <app-chart [data]="balanceChartData()" type="bar"></app-chart>
+
+          <div class="h-48 w-full flex items-center justify-center relative">
+            @if (financeService.isLoading()) {
+            <div
+              class="w-8 h-8 border-4 border-indigo-100 dark:border-slate-700 border-t-indigo-600 dark:border-t-indigo-500 rounded-full animate-spin">
+            </div>
+            } @else {
+            <app-chart class="w-full h-full block" [data]="balanceChartData()" type="bar"></app-chart>
+            }
           </div>
         </div>
         }
@@ -290,15 +349,21 @@
           <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
             {{ selectedCardId() ? 'Gastos da Fatura por Categoria' : 'Despesas por Categoria' }}
           </h3>
-          <div class="h-56">
-            <app-chart [data]="categoryChartData()" type="donut"></app-chart>
+
+          <div class="h-56 w-full flex items-center justify-center relative">
+            @if (financeService.isLoading()) {
+            <div
+              class="w-8 h-8 border-4 border-indigo-100 dark:border-slate-700 border-t-indigo-600 dark:border-t-indigo-500 rounded-full animate-spin">
+            </div>
+            } @else {
+            <app-chart class="w-full h-full block" [data]="categoryChartData()" type="donut"></app-chart>
+            }
           </div>
         </div>
 
       </div>
 
       <!-- Right Column: Transactions List -->
-
       <div class="lg:col-span-2">
 
         @if (selectedDay()) {
@@ -413,7 +478,18 @@
 
           </div>
 
-          <div class="flex-1 overflow-auto max-h-[600px] p-2">
+          <div class="flex-1 overflow-auto max-h-[600px] p-2 flex flex-col min-h-[300px]">
+
+            @if (financeService.isLoading()) {
+            <div class="flex-1 flex flex-col items-center justify-center h-full">
+              <div
+                class="w-10 h-10 border-4 border-indigo-100 dark:border-slate-700 border-t-indigo-600 dark:border-t-indigo-500 rounded-full animate-spin mb-4">
+              </div>
+              <p class="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">Carregando
+                movimentações...</p>
+            </div>
+            } @else {
+
             @if (filteredTransactions().length === 0) {
             <div class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24"
@@ -558,27 +634,47 @@
                     <div class="flex flex-col items-end justify-center h-[48px] relative overflow-hidden">
 
                       <div
-                        class="flex items-center gap-2 transition-transform duration-300 ease-in-out group-hover:-translate-y-2">
+                        class="flex items-center gap-2 transition-transform duration-300 ease-in-out group-hover:-translate-y-2"
+                        [class.opacity-50]="updatingTransactionId() === t.id">
+
                         <span class="font-bold whitespace-nowrap"
                           [class]="t.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'">
                           {{ t.type === 'INCOME' ? '+' : '-' }} {{ formatCurrency(t.amount) }}
                         </span>
 
                         <button (click)="togglePaid(t); $event.stopPropagation()"
+                          [disabled]="updatingTransactionId() === t.id"
                           class="flex items-center justify-center w-5 h-5 rounded-full border transition-all duration-200"
-                          [ngClass]="t.paid ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-transparent border-slate-300 dark:border-slate-600 text-slate-400 hover:border-emerald-500'">
+                          [ngClass]="t.paid
+                              ? 'bg-emerald-500 border-emerald-600 text-white'
+                              : 'bg-transparent border-slate-300 dark:border-slate-600 text-slate-400 hover:border-emerald-500'">
+                          @if (updatingTransactionId() === t.id) {
+                          <div class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          } @else {
                           @if (t.paid) {
                           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M5 13l4 4L19 7">
                             </path>
                           </svg>
                           }
+                          }
                         </button>
                       </div>
 
-                      <div
-                        class="flex gap-0 absolute bottom-0 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-1 transition-all duration-300 ease-in-out">
-                        <button (click)="initiateEdit(t)"
+                      <div class="flex gap-1 absolute bottom-0 transition-all duration-300 ease-in-out" [ngClass]="updatingTransactionId() === t.id 
+                                      ? 'opacity-100 translate-y-1' 
+                                      : 'opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-1'">
+
+                        @if (updatingTransactionId() === t.id) {
+                        <div
+                          class="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md shadow-sm">
+                          <div class="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin">
+                          </div>
+                          <span
+                            class="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">Processando...</span>
+                        </div>
+                        } @else {
+                        <button (click)="initiateEdit(t); $event.stopPropagation()"
                           class="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Editar">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
@@ -587,7 +683,7 @@
                           </svg>
                         </button>
 
-                        <button (click)="initiateDelete(t)"
+                        <button (click)="initiateDelete(t); $event.stopPropagation()"
                           class="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="Excluir">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
@@ -595,6 +691,7 @@
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
+                        }
                       </div>
 
                     </div>
@@ -603,6 +700,7 @@
                 }
               </tbody>
             </table>
+            }
             }
           </div>
         </div>
@@ -613,7 +711,8 @@
   <!-- BATCH ACTION CONFIRMATION MODAL -->
   @if (activeModal() === 'batch-confirm') {
   <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+      (click)="!isSaving() && closeModal()"></div>
 
     <div
       class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
@@ -670,42 +769,53 @@
         <div class="flex flex-col gap-2">
 
           @if (pendingAction()?.type === 'delete' && !pendingAction()?.transaction?.groupId) {
-          <button (click)="executeBatchAction('single')"
-            class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition-colors shadow-sm">
-            Sim, Excluir
+          <button (click)="executeBatchAction('single')" [disabled]="isSaving()"
+            class="w-full flex justify-center items-center gap-2 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed">
+            @if (isSaving()) {
+            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>Excluindo...</span>
+            } @else {
+            <span>Sim, Excluir</span>
+            }
           </button>
-          <button (click)="closeModal()"
-            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+
+          <button (click)="closeModal()" [disabled]="isSaving()"
+            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             Cancelar
           </button>
           }
 
           @else {
-          <button (click)="executeBatchAction('single')"
-            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+          <button (click)="executeBatchAction('single')" [disabled]="isSaving()"
+            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {{ pendingAction()?.type === 'pay' ? 'Apenas este item' : 'Apenas esta (Mês atual)' }}
           </button>
 
           @if (pendingAction()?.type !== 'pay') {
-          <button (click)="executeBatchAction('future')"
-            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+          <button (click)="executeBatchAction('future')" [disabled]="isSaving()"
+            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             Esta e as futuras
           </button>
-          <button (click)="executeBatchAction('past')"
-            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors">
+          <button (click)="executeBatchAction('past')" [disabled]="isSaving()"
+            class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             Esta e as anteriores
           </button>
           }
 
-          <button (click)="executeBatchAction('all')"
-            [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'"
-            class="w-full py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm">
-            {{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' +
-            getCardName(pendingAction()?.transaction?.creditCardId) + ')' : 'Todas as parcelas' }}
+          <button (click)="executeBatchAction('all')" [disabled]="isSaving()"
+            [class]="pendingAction()?.type === 'pay' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'"
+            class="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-white rounded-lg font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed">
+            @if (isSaving()) {
+            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>Processando...</span>
+            } @else {
+            <span>{{ pendingAction()?.type === 'pay' ? 'Toda a Fatura (' +
+              getCardName(pendingAction()?.transaction?.creditCardId) + ')' : 'Todas as parcelas' }}</span>
+            }
           </button>
 
-          <button (click)="closeModal()"
-            class="mt-2 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Cancelar</button>
+          <button (click)="closeModal()" [disabled]="isSaving()"
+            class="mt-2 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline disabled:opacity-50 disabled:cursor-not-allowed">Cancelar</button>
           }
 
         </div>
@@ -717,7 +827,8 @@
   <!-- TRANSACTION MODAL -->
   @if (activeModal() === 'transaction') {
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" (click)="closeModal()"></div>
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+      (click)="!isSaving() && closeModal()"></div>
 
     <div
       class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg relative z-10 overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-slate-700">
@@ -730,17 +841,17 @@
           Nova Movimentação
           }
         </h2>
-        <button (click)="closeModal()"
-          class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+        <button (click)="closeModal()" [disabled]="isSaving()"
+          class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <form [formGroup]="transactionForm" (ngSubmit)="onSubmitTransaction()" class="p-6 space-y-5">
+      <form [formGroup]="transactionForm" (ngSubmit)="onSubmitTransaction()" class="p-6 space-y-5"
+        [class.opacity-80]="isSaving()">
 
-        <!-- Warning for Batch Edit -->
         @if (batchEditScope()) {
         <div
           class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200 text-xs px-3 py-2 rounded-lg border border-indigo-100 dark:border-indigo-800 flex items-center gap-2">
@@ -753,21 +864,19 @@
         </div>
         }
 
-        <!-- Type Toggle -->
         <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
-          <button type="button" (click)="transactionForm.patchValue({type: 'EXPENSE'})"
-            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
+          <button type="button" (click)="transactionForm.patchValue({type: 'EXPENSE'})" [disabled]="isSaving()"
+            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             [class]="transactionForm.get('type')?.value === 'EXPENSE' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Despesa
           </button>
-          <button type="button" (click)="transactionForm.patchValue({type: 'INCOME'})"
-            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90"
+          <button type="button" (click)="transactionForm.patchValue({type: 'INCOME'})" [disabled]="isSaving()"
+            class="flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             [class]="transactionForm.get('type')?.value === 'INCOME' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
             Receita
           </button>
         </div>
 
-        <!-- Description & Amount -->
         <div class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
             <label
@@ -786,7 +895,6 @@
           <div class="relative">
             <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Data</label>
             <div class="relative">
-              <!-- Added onclick="this.showPicker()" to force calendar on click -->
               <input type="date" onclick="this.showPicker()" formControlName="date"
                 class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white cursor-pointer"
                 [attr.disabled]="batchEditScope() ? true : null" [class.opacity-50]="batchEditScope()">
@@ -824,7 +932,6 @@
           </div>
         </div>
 
-        <!-- Expense Specifics -->
         @if (transactionForm.get('type')?.value === 'EXPENSE') {
         <div
           class="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-1">
@@ -895,8 +1002,8 @@
               <input type="number" min="1" formControlName="installments"
                 class="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:border-indigo-500"
                 placeholder="Qtd Parcelas">
-              <button type="button" (click)="customInstallmentMode.set(false)"
-                class="px-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+              <button type="button" (click)="customInstallmentMode.set(false)" [disabled]="isSaving()"
+                class="px-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Voltar para lista">
                 Voltar
               </button>
@@ -909,11 +1016,19 @@
         }
 
         <div class="pt-4 flex gap-3">
-          <button type="button" (click)="closeModal()"
-            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors cursor-pointer active:scale-90">Cancelar</button>
-          <button type="submit" [disabled]="transactionForm.invalid"
-            class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer active:scale-90">
-            Salvar
+          <button type="button" (click)="closeModal()" [disabled]="isSaving()"
+            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors cursor-pointer active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
+            Cancelar
+          </button>
+
+          <button type="submit" [disabled]="transactionForm.invalid || isSaving()"
+            class="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer active:scale-90">
+            @if (isSaving()) {
+            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>Salvando...</span>
+            } @else {
+            <span>{{ editingTransactionId() ? 'Salvar Alterações' : 'Salvar' }}</span>
+            }
           </button>
         </div>
       </form>

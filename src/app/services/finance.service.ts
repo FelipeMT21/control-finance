@@ -38,6 +38,8 @@ export class FinanceService {
 
   // --- STATE ---
 
+  isLoading = signal(false);
+
   // Settings no LocalStorage por enquanto
   readonly settings = signal<UserSettings>({ monthStartDay: 1, darkMode: false });
   readonly categories = signal<Category[]>([]);
@@ -263,6 +265,7 @@ export class FinanceService {
   }
 
   loadByMonth(month: number, year: number) {
+    this.isLoading.set(true)
     this.lastViewedMonth = month;
     this.lastViewedYear = year;
     const javaMonth = month + 1; // JS 0-11 -> Java 1-12
@@ -273,8 +276,10 @@ export class FinanceService {
     ).subscribe({
       next: (mappedData) => {
         this._transactions.set(mappedData);
+        this.isLoading.set(false)
       },
       error: (err) => {
+        this.isLoading.set(false)
         console.error('Erro ao carregar transações:', err)
         alert('Não foi possível carregar as transações. Tente novamente mais tarde.')
       }
@@ -358,6 +363,12 @@ export class FinanceService {
     return forkJoin(requests);
   }
 
+  addTransactionLocally(transaction: Transaction) {
+    this._transactions.update(currentList => {
+      return [transaction, ...currentList];
+    });
+  }
+
   deleteTransaction(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
   }
@@ -366,6 +377,12 @@ export class FinanceService {
     // Backend doesn't have bulk delete, map to single deletes
     const requests = ids.map(id => this.http.delete(`${this.API_URL}/${id}`));
     return forkJoin(requests);
+  }
+
+  deleteTransactionLocally(ids: string[]) {
+    this._transactions.update(currentList => {
+      return currentList.filter(t => t.id && !ids.includes(t.id));
+    })
   }
 
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
@@ -396,6 +413,22 @@ export class FinanceService {
         return throwError(() => new Error('Falha ao atualizar transação.'));
       })
     );
+  }
+
+  updateTransactionLocally(id: string, updates: Partial<Transaction>) {
+    this._transactions.update(currentList => {
+      return [...currentList.map(t =>
+        t.id === id ? { ...t, ...updates } : t
+      )];
+    });
+  }
+
+  updateTransactionsLocally(ids: string[], updates: Partial<Transaction>) {
+    this._transactions.update(currentList => {
+      return currentList.map(t =>
+        (t.id && ids.includes(t.id)) ? { ...t, updates } : t
+      );
+    });
   }
 
   // --- SETTINGS & LOCAL DATA HELPERS ---

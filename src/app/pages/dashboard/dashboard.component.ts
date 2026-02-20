@@ -41,7 +41,11 @@ export class DashboardComponent {
   activeModal = signal<'transaction' | 'settings' | 'batch-confirm' | 'calendar' | null>(null);
   settingsTab = signal<'preferences' | 'categories' | 'cards' | 'owners'>('preferences');
 
+  isSaving = signal(false);
+
   editingTransactionId = signal<string | null>(null);
+  updatingTransactionId = signal<string | null>(null);
+
   editingOwnerId = signal<string | null>(null);
   editingCardId = signal<string | null>(null);
   useCard = signal(false);
@@ -397,8 +401,6 @@ export class DashboardComponent {
         if (action.transaction.id) targetIds = [action.transaction.id];
       } else {
         // Opção 2: Pagar Fatura Inteira (scope === 'all')
-
-        // Identifica o cartão da transação clicada
         const currentCardId = action.transaction.creditCardId;
 
         if (!currentCardId) {
@@ -407,16 +409,14 @@ export class DashboardComponent {
         }
 
         targetIds = this.financeService.transactions()
-          .filter(t => {
-            const tCardId = t.creditCardId;
-            return tCardId === currentCardId;
-          })
-          // Filtrado para garantir que só foi pego quem tem ID (Type Guard)
+          .filter(t => t.creditCardId === currentCardId)
           .map(t => t.id)
           .filter((id): id is string => !!id);
       }
 
       if (targetIds.length === 0) return;
+
+      this.isSaving.set(true);
 
       const requests = targetIds.map(id =>
         this.financeService.updateTransaction(id, { paid: isPaying })
@@ -424,39 +424,79 @@ export class DashboardComponent {
 
       forkJoin(requests).subscribe({
         next: () => {
+          this.financeService.updateTransactionsLocally(targetIds, { paid: isPaying });
+          this.isSaving.set(false);
           this.closeModal();
-          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
         },
-        error: (err) => alert('Erro ao atualizar pagamento em lote: ' + err.message)
+        error: (err) => {
+          this.isSaving.set(false);
+          alert('Erro ao atualizar pagamento em lote: ' + err.message);
+        }
       });
       return;
     }
 
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
     if (action.type === 'delete') {
-      const groupId = action.transaction.groupId!;
-      this.financeService.fetchGroup(groupId).subscribe(groupTransactions => {
-        const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
-        if (currentIndex === -1) { this.closeModal(); return; }
+      this.isSaving.set(true);
 
-        let targetIds: (string | undefined)[] = [];
-        if (scope === 'single') targetIds = [action.transaction.id];
-        else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
-        else if (scope === 'future') targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
-        else if (scope === 'past') targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
+      const groupId = action.transaction.groupId;
 
-        const validIds = targetIds.filter((id): id is string => !!id);
+      // Se for uma transação em lote (Parcelada/Recorrente)
+      if (groupId) {
+        this.financeService.fetchGroup(groupId).subscribe(groupTransactions => {
+          const currentIndex = groupTransactions.findIndex(t => t.id === action.transaction.id);
+          if (currentIndex === -1) { 
+            this.isSaving.set(false);
+            this.closeModal(); 
+            return; 
+          }
 
-        if (validIds.length === 0) return;
+          let targetIds: (string | undefined)[] = [];
+          if (scope === 'single') targetIds = [action.transaction.id];
+          else if (scope === 'all') targetIds = groupTransactions.map(t => t.id);
+          else if (scope === 'future') targetIds = groupTransactions.slice(currentIndex).map(t => t.id);
+          else if (scope === 'past') targetIds = groupTransactions.slice(0, currentIndex + 1).map(t => t.id);
 
-        this.financeService.deleteTransactionsBulk(validIds).subscribe({
-          next: () => {
-            this.closeModal();
-            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
-          },
-          error: (err) => alert('Erro ao excluir em lote: ' + err.message)
+          const validIds = targetIds.filter((id): id is string => !!id);
+
+          if (validIds.length === 0) {
+            this.isSaving.set(false);
+            return;
+          }
+
+          this.financeService.deleteTransactionsBulk(validIds).subscribe({
+            next: () => {
+              this.financeService.deleteTransactionLocally(validIds);
+              this.isSaving.set(false);
+              this.closeModal();
+            },
+            error: (err) => {
+              this.isSaving.set(false);
+              alert('Erro ao excluir em lote: ' + err.message);
+            }
+          });
         });
-      });
+      } 
+      // Se for uma transação simples (Única)
+      else {
+        if (!action.transaction.id) {
+          this.isSaving.set(false);
+          return;
+        }
+
+        this.financeService.deleteTransactionsBulk([action.transaction.id]).subscribe({
+          next: () => {
+            this.financeService.deleteTransactionLocally([action.transaction.id!]);
+            this.isSaving.set(false);
+            this.closeModal();
+          },
+          error: (err) => {
+            this.isSaving.set(false);
+            alert('Erro ao excluir transação: ' + err.message);
+          }
+        });
+      }
       return;
     }
 
@@ -472,7 +512,7 @@ export class DashboardComponent {
 
   onSubmitTransaction() {
     if (this.transactionForm.invalid) return;
-
+    this.isSaving.set(true);
     const val = this.transactionForm.value;
 
     const rawType = val.type ? val.type.toUpperCase() : 'EXPENSE';
@@ -514,14 +554,18 @@ export class DashboardComponent {
 
       if (!scope || scope === 'single') {
         this.financeService.updateTransaction(editId, updatePayload).subscribe({
-          next: () => {
-            this.closeModal();
-            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          next: (updated) => {
+            // this.closeModal();
+            // this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+            this.financeService.updateTransactionLocally(editId, updated);
+            this.handleModalClose();
           },
-          error: (err) => alert('Erro ao atualizar: ' + (err.error?.message || err.message))
+          error: (err) => {
+            this.isSaving.set(false);
+            alert('Erro ao atualizar: ' + (err.error?.message || err.message))
+          }
         });
       } else {
-        // Batch Logic... (código já existente)
         const original = this.financeService.transactions().find(t => t.id === editId);
         if (original && original.groupId) {
           this.financeService.fetchGroup(original.groupId).subscribe(groupTransactions => {
@@ -558,7 +602,7 @@ export class DashboardComponent {
       }
 
     } else {
-      // --- CREATE LOGIC (AQUI MUDA) ---
+      // --- CREATE LOGIC  ---
       const numInstallments = isExpense ? Number(val.installments) : 1;
 
       this.financeService.addTransaction(
@@ -574,12 +618,22 @@ export class DashboardComponent {
         isPaidAutomatic
       ).subscribe({
         next: () => {
-          this.closeModal();
           this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          this.handleModalClose();
         },
-        error: (err) => alert('Erro ao salvar no servidor: ' + err.message)
+        error: (err) => {
+          this.isSaving.set(false);
+          alert('Erro ao salvar no servidor: ' + err.message)
+        }
       });
     }
+  }
+
+  private handleModalClose() {
+    setTimeout(() => {
+      this.isSaving.set(false);
+      this.closeModal();
+    }, 100);
   }
 
   togglePaid(transaction: Transaction) {
@@ -600,11 +654,19 @@ export class DashboardComponent {
   }
 
   private executeTogglePaid(id: string, novoStatus: boolean) {
+    this.updatingTransactionId.set(id);
+
     this.financeService.updateTransaction(id, { paid: novoStatus }).subscribe({
-      next: () => this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear()),
+      next: () => {
+        //this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear())
+        this.financeService.updateTransactionLocally(id, { paid: novoStatus });
+      },
       error: (err) => {
         console.error('Erro ao atualizar status:', err);
         alert('Não foi possível atualizar o pagamento. Tente novamente.');
+      },
+      complete: () => {
+        this.updatingTransactionId.set(null);
       }
     });
   }
