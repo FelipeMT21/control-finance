@@ -38,6 +38,8 @@ export class FinanceService {
 
   // --- STATE ---
 
+  isLoading = signal(false);
+
   // Settings no LocalStorage por enquanto
   readonly settings = signal<UserSettings>({ monthStartDay: 1, darkMode: false });
   readonly categories = signal<Category[]>([]);
@@ -263,6 +265,7 @@ export class FinanceService {
   }
 
   loadByMonth(month: number, year: number) {
+    this.isLoading.set(true)
     this.lastViewedMonth = month;
     this.lastViewedYear = year;
     const javaMonth = month + 1; // JS 0-11 -> Java 1-12
@@ -273,8 +276,10 @@ export class FinanceService {
     ).subscribe({
       next: (mappedData) => {
         this._transactions.set(mappedData);
+        this.isLoading.set(false)
       },
       error: (err) => {
+        this.isLoading.set(false)
         console.error('Erro ao carregar transações:', err)
         alert('Não foi possível carregar as transações. Tente novamente mais tarde.')
       }
