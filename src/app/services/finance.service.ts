@@ -368,6 +368,12 @@ export class FinanceService {
     return forkJoin(requests);
   }
 
+  deleteTransactionLocally(ids: string[]) {
+    this._transactions.update(currentList => {
+      return currentList.filter(t => t.id && !ids.includes(t.id));
+    })
+  }
+
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<any> {
     // Prepara o objeto para o Backend (converte type para Maiúsculo se existir)
     const payload: any = {
@@ -396,6 +402,22 @@ export class FinanceService {
         return throwError(() => new Error('Falha ao atualizar transação.'));
       })
     );
+  }
+
+  updateTransactionLocally(id: string, updates: Partial<Transaction>) {
+    this._transactions.update(currentList => {
+      return [...currentList.map(t =>
+        t.id === id ? { ...t, ...updates } : t
+      )];
+    });
+  }
+
+  updateTransactionsLocally(ids: string[], updates: Partial<Transaction>) {
+    this._transactions.update(currentList => {
+      return currentList.map(t =>
+        (t.id && ids.includes(t.id)) ? { ...t, updates } : t
+      );
+    });
   }
 
   // --- SETTINGS & LOCAL DATA HELPERS ---

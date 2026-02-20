@@ -42,6 +42,8 @@ export class DashboardComponent {
   settingsTab = signal<'preferences' | 'categories' | 'cards' | 'owners'>('preferences');
 
   editingTransactionId = signal<string | null>(null);
+  updatingTransactionId = signal<string | null>(null);
+
   editingOwnerId = signal<string | null>(null);
   editingCardId = signal<string | null>(null);
   useCard = signal(false);
@@ -425,7 +427,8 @@ export class DashboardComponent {
       forkJoin(requests).subscribe({
         next: () => {
           this.closeModal();
-          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          //this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+          this.financeService.updateTransactionsLocally(targetIds, { paid: isPaying })
         },
         error: (err) => alert('Erro ao atualizar pagamento em lote: ' + err.message)
       });
@@ -452,7 +455,8 @@ export class DashboardComponent {
         this.financeService.deleteTransactionsBulk(validIds).subscribe({
           next: () => {
             this.closeModal();
-            this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
+            this.financeService.deleteTransactionLocally(validIds)
+            //this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
           },
           error: (err) => alert('Erro ao excluir em lote: ' + err.message)
         });
@@ -600,11 +604,19 @@ export class DashboardComponent {
   }
 
   private executeTogglePaid(id: string, novoStatus: boolean) {
+    this.updatingTransactionId.set(id);
+
     this.financeService.updateTransaction(id, { paid: novoStatus }).subscribe({
-      next: () => this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear()),
+      next: () => {
+        //this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear())
+        this.financeService.updateTransactionLocally(id, { paid: novoStatus });
+      },
       error: (err) => {
         console.error('Erro ao atualizar status:', err);
         alert('Não foi possível atualizar o pagamento. Tente novamente.');
+      },
+      complete: () => {
+        this.updatingTransactionId.set(null);
       }
     });
   }
