@@ -354,9 +354,6 @@ export class FinanceService {
         paid: paid
       };
 
-      //Teste log Installments
-      console.log(`Parcela ${i + 1}: Intenção dia ${day} -> Gerado: ${formattedDate} | Método: ${paymentMethod}`);
-
       requests.push(this.http.post(this.API_URL, payload));
     }
 

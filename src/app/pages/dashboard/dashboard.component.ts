@@ -588,10 +588,12 @@ export class DashboardComponent {
             if (requests.length === 0) return;
             forkJoin(requests).subscribe({
               next: () => {
+                this.isSaving.set(false);
                 this.closeModal();
                 this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
               },
               error: (err) => {
+                this.isSaving.set(false);
                 const msg = err.error?.message || 'Ocorreu um erro ao salvar a transação.';
                 console.error('Erro no cadastro:', err);
                 alert('Não foi possível salvar: ' + msg);
