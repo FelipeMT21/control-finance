@@ -397,12 +397,9 @@ export class DashboardComponent {
       let targetIds: string[] = [];
 
       if (scope === 'single') {
-        // Opção 1: Pagar apenas este item
         if (action.transaction.id) targetIds = [action.transaction.id];
       } else {
-        // Opção 2: Pagar Fatura Inteira (scope === 'all')
         const currentCardId = action.transaction.creditCardId;
-
         if (!currentCardId) {
           console.warn('Tentativa de pagar fatura sem cartão identificado.');
           return;
@@ -425,6 +422,7 @@ export class DashboardComponent {
       forkJoin(requests).subscribe({
         next: () => {
           this.financeService.updateTransactionsLocally(targetIds, { paid: isPaying });
+          this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
           this.isSaving.set(false);
           this.closeModal();
         },
@@ -468,6 +466,7 @@ export class DashboardComponent {
           this.financeService.deleteTransactionsBulk(validIds).subscribe({
             next: () => {
               this.financeService.deleteTransactionLocally(validIds);
+              this.financeService.loadByMonth(this.selectedMonth(), this.selectedYear());
               this.isSaving.set(false);
               this.closeModal();
             },
